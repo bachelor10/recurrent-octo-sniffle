@@ -1,1 +1,3 @@
-# gatherer
+# Gatherer
+
+## Gather all the pokemons
