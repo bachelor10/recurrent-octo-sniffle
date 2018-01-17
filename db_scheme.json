@@ -1,0 +1,51 @@
+{
+  "traces": {
+      "trace_id1": {
+          "eq_id": "eq_id1",
+          "entries": [
+              {
+                  "timestamp": "84934348939",
+                  "x_val": "23",
+                  "y_val": "58"
+              },
+              {
+                  "timestamp": "84934348996",
+                  "x_val": "25",
+                  "y_val": "59"
+              }
+          ]
+      },
+      "trace_id2": {
+          "eq_id": "eq_id2",
+          "entries": [
+              {
+                  "timestamp": "14934893439",
+                  "x_val": "45",
+                  "y_val": "11"
+              },
+              {
+                  "timestamp": "14934893498",
+                  "x_val": "47",
+                  "y_val": "10"
+              }
+          ]
+      }
+    },
+    "equations": {
+        "eq_id1": {
+            "title": "Division - Five minus four",
+            "real_val": "5 - 4",
+            "answer": "1"
+        },
+        "eq_id2": {
+            "title": "Addition - Ten pluss two",
+            "real_val": "10 + 2",
+            "answer": "12"
+        },
+        "eq_id3": {
+            "title": "Digit - Seven",
+            "real_val": "7",
+            "answer": "7"
+        }
+    }
+}
