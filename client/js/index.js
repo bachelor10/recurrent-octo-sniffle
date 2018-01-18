@@ -55,7 +55,12 @@ function Canvas(DOMElement) {
     this.prevX = null;
     this.prevy = null;
 
+    this.releaseTimeout = null;
+
+    //These should be overridden
     this.onDraw = null;
+    this.onComplete = null;
+
 
 }
 
@@ -72,6 +77,11 @@ Canvas.prototype.drawLine = function (x1, y1, x2, y2) {
 Canvas.prototype.onMouseDown = function (event) {
     event.preventDefault();
     this.isMouseDown = true;
+
+    //Clear complete timeout from on mouse up
+    if(this.releaseTimeout !== null){
+        clearTimeout(this.releaseTimeout);
+    }
 
 };
 
@@ -104,14 +114,35 @@ Canvas.prototype.onMouseMove = function (event) {
         this.prevY = thisY;
     }
 };
+
 Canvas.prototype.onMouseUp = function (event) {
     event.preventDefault();
+
     this.isMouseDown = false;
+
     this.prevX = undefined;
-    this.prevy = undefined;
+    this.prevY = undefined;
+
+    this.releaseTimeout = setTimeout(function () {
+        if(this.isMouseDown === false){
+            this.onComplete(true);
+            this.releaseTimeout = null;
+        }
+    }.bind(this), 2000)
 };
 
 
+function onCompleteDrawing(callback){
+    $.post("/api", {}, callback)
+}
+
+function setNewEquation(DOMElement) {
+    $.get("/api", function(data, status){
+        if(status === 'success'){
+            console.log("Data", data);
+        }
+    });
+}
 
 $(document).ready(function () {
     //Get canvas and prepare
@@ -124,4 +155,18 @@ $(document).ready(function () {
         messageService.send({x1: x1, y1: y1, x2: x2, y2: y2, timestamp: performance.now()})
     };
 
+    canvas.onComplete = function (success) {
+        //Canvas has not been touched in 1 second
+        if(success){
+            //If a correct drawing is drawn, send a post
+            onCompleteDrawing(function (message, status) {
+                //If post request was successful
+                if(status === 'success'){
+                    //Get and set a new equation (TODO: Input correct dom element)
+                    console.log("Setting new equation");
+                    setNewEquation()
+                }
+            });
+        }
+    };
 });
