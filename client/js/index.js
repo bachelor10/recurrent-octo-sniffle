@@ -118,7 +118,7 @@ $(document).ready(function () {
 
     var canvas = new Canvas($("#canvas"));
 
-    var messageService = new MessageService(new WebSocket('ws://localhost:8000'));
+    var messageService = new MessageService(new WebSocket('ws://localhost:8080/ws'));
 
     canvas.onDraw = function (x1, y1, x2, y2) {
         messageService.send({x1: x1, y1: y1, x2: x2, y2: y2, timestamp: performance.now()})
