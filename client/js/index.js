@@ -169,4 +169,7 @@ $(document).ready(function () {
             });
         }
     };
+
+    //Get initial function (TODO: Insert correct dom element)
+    setNewEquation()
 });
