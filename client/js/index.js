@@ -1,3 +1,35 @@
+"use strict";
+//MessageService sends messages to server using websockets
+function MessageService (ws) {
+
+
+    this.ws = ws;
+    this.isOpen = false;
+    this.onMessage = null;
+    this.send = this.send.bind(this);
+
+    ws.onopen = function () {
+        this.isOpen = true
+    }.bind(this);
+
+    ws.onclose = function () {
+        this.isOpen = false;
+    }.bind(this);
+
+    ws.onmessage = function (message) {
+        if(typeof this.onMessage === 'function'){
+            this.onMessage(JSON.parse(message));
+        }
+    }.bind(this)
+}
+
+MessageService.prototype.send = function(message){
+    console.log("Sending message", message)
+    if(this.isOpen){
+        this.ws.send(JSON.stringify(message));
+    }
+};
+
 
 // Canvas has control over the canvas element
 // It recieves messages from WebSocket service and draws the corresponding data
@@ -13,20 +45,17 @@ function Canvas(DOMElement) {
     this.onMouseDown = this.onMouseDown.bind(this);
 
 
-    //Add mouse listeners
-    this.DOMElement.on('mousedown', this.onMouseDown);
-    this.DOMElement.on('mouseup', this.onMouseUp);
-    this.DOMElement.on('mousemove', this.onMouseMove);
-
-    //Add touch listeners
+    //Add mouse and touch listeners
     //TODO: Check whether some devices trigger both listeners
-    this.DOMElement.on('touchstart', this.onMouseDown);
-    this.DOMElement.on('touchend', this.onMouseUp);
-    this.DOMElement.on('touchmove', this.onMouseMove);
-
+    this.DOMElement.on('mousedown touchstart', this.onMouseDown);
+    this.DOMElement.on('mouseup touchend', this.onMouseUp);
+    this.DOMElement.on('mousemove touchmove', this.onMouseMove);
 
     this.isMouseDown = false;
+    this.prevX = null;
+    this.prevy = null;
 
+    this.onDraw = null;
 
 }
 
@@ -61,14 +90,18 @@ Canvas.prototype.onMouseMove = function (event) {
             thisY = event.targetTouches[0].pageY - rect.top;
         }
 
-        //Draw on canvas
-        this.drawLine(this.prevX, this.prevY, thisX, thisY);
+        //If this is not the first press
+        if(this.prevX && this.prevY){
+            //Draw on canvas
+            this.drawLine(this.prevX, this.prevY, thisX, thisY);
 
+            //Then dispatch a message if onDraw is specified
+            typeof this.onDraw === 'function' && this.onDraw(this.prevX, this.prevY, thisX, thisY);
+
+        }
         //Store last position
         this.prevX = thisX;
         this.prevY = thisY;
-
-
     }
 };
 Canvas.prototype.onMouseUp = function (event) {
@@ -84,4 +117,11 @@ $(document).ready(function () {
     //Get canvas and prepare
 
     var canvas = new Canvas($("#canvas"));
+
+    var messageService = new MessageService(new WebSocket('ws://localhost:8000'));
+
+    canvas.onDraw = function (x1, y1, x2, y2) {
+        messageService.send({x1: x1, y1: y1, x2: x2, y2: y2, timestamp: performance.now()})
+    };
+
 });
