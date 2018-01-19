@@ -1,63 +1,103 @@
 from tornado import websocket, web, ioloop
 
-import os
+import os, uuid, json
 
 class Client:
-    def __init__(self, client):
+    def __init__(self, ip, uuid):
         self.buffer = []
-        self.identity = client
+        self.ip = ip
+        self.uuid = uuid
+        self.data = None
 
-def find_client(identity):
-    for client in WebSocket.clients:
-        if client.identity == identity:
+def find_client(ip, uuid):
+    for client in clients:
+        if client.ip == ip and client.uuid == uuid:
             return client
             
     return None
 
+def find_client_with_request_data(data):
+    for client in clients:
+        if client.data == data:
+            return client
+            
+    return None
+    
+
+clients = set()
+
 class WebSocket(websocket.WebSocketHandler):
-    clients = set()
 
     def open(self):
-        print('Client connected!')
-        # create client object
-        client = Client(self)
-
-        # add client object to list
-        WebSocket.clients.add(client)
+        print('Client connected to websocket!')
+        
 
     def on_message(self, message):
-        find_client(self).buffer.append(message)
-        
+
+        parsed_message = json.loads(message)
+
+        # Find client
+        client = find_client(self.request.remote_ip, parsed_message['uuid'])
+
+        # Remove uuid from json
+        parsed_message.pop('uuid', None)
+
+        # Add data to buffer
+        client.buffer.append(message)
+
+        # Set client data if not set
+        if(client.data == None):
+            client.data = self
+
     def on_close(self):
         print('Client disconnected!')
 
         # Find client
-        client = find_client(self)
-        print(client.buffer)
+        client = find_client_with_request_data(self)
 
         # Delete client buffer
         del client.buffer
 
         # Remove client from set
-        WebSocket.clients.remove(client)
+        clients.remove(client)
 
 class rest_handler(web.RequestHandler):
     
     def get(self, *args):
-        print('get')
+        # Create client object and add to set
+        client = Client(ip = self.request.remote_ip, uuid = uuid.uuid4())
+        clients.add(client)
 
-        for client in WebSocket.clients:
-            if client.identity == self:
-                print('match!')
+        # Get an equation from db
 
-        # Fetch a trace from db
-        # Initiate a trace
-        # Send client trace instructions
+        # Create json
+        data = {
+            'equation': '2 + 2 = 4',
+            'uuid': str(client.uuid)
+        }
+
+        # Send equation and uuid to client
+        self.write(json.dumps(data))
+
 
     def post(self):
-        print('post')
-        # send bufferdata in clientobject to db
-        # Send client a new trace
+        print(self.request.remote_ip)
+        # Extract IP and UUID
+
+        # Find client in set
+
+        # Extract image
+
+        # Save image
+
+        # Send client buffer to db
+
+        # Reset buffer
+
+        # Get an equation from db
+
+        # Send equation to client
+
 
 class IndexHandler(web.RequestHandler):
     def get(self):
