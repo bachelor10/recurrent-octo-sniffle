@@ -13,6 +13,7 @@ function MessageService (ws) {
     }.bind(this);
 
     ws.onclose = function () {
+        console.log('close');
         this.isOpen = false;
     }.bind(this);
 
@@ -136,10 +137,16 @@ function onCompleteDrawing(callback){
     $.post("/api", {}, callback)
 }
 
+var uuid = '';
+
 function setNewEquation(DOMElement) {
     $.get("/api", function(data, status){
         if(status === 'success'){
             console.log("Data", data);
+            let parsedData = JSON.parse(data);
+            console.log(parsedData.equation);
+            console.log(parsedData.uuid);
+            uuid = parsedData.uuid;
         }
     });
 }
@@ -152,7 +159,7 @@ $(document).ready(function () {
     var messageService = new MessageService(new WebSocket('ws://localhost:8080/ws'));
 
     canvas.onDraw = function (x1, y1, x2, y2) {
-        messageService.send({x1: x1, y1: y1, x2: x2, y2: y2, timestamp: performance.now()})
+        messageService.send({x1: x1, y1: y1, x2: x2, y2: y2, timestamp: performance.now(), uuid: uuid})
     };
 
     canvas.onComplete = function (success) {

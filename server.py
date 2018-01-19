@@ -3,28 +3,24 @@ from tornado import websocket, web, ioloop
 import os, uuid, json
 
 class Client:
-    def __init__(self, ip, uuid):
+    def __init__(self, uuid):
         self.buffer = []
-        self.ip = ip
         self.uuid = uuid
         self.data = None
 
-def find_client(ip, uuid):
-    for client in clients:
-        if client.ip == ip and client.uuid == uuid:
-            return client
-            
-    return None
+def find_client(uuid):
+    # Can return None
+    return clients.get(uuid)
 
 def find_client_with_request_data(data):
-    for client in clients:
-        if client.data == data:
+    for k,client in clients.items():
+        if(client.data == data):
             return client
             
     return None
     
 
-clients = set()
+clients = dict()
 
 class WebSocket(websocket.WebSocketHandler):
 
@@ -37,43 +33,48 @@ class WebSocket(websocket.WebSocketHandler):
         parsed_message = json.loads(message)
 
         # Find client
-        client = find_client(self.request.remote_ip, parsed_message['uuid'])
+        client = find_client(parsed_message['uuid'])
 
         # Remove uuid from json
         parsed_message.pop('uuid', None)
 
         # Add data to buffer
         client.buffer.append(message)
-
+       
         # Set client data if not set
         if(client.data == None):
             client.data = self
+
 
     def on_close(self):
         print('Client disconnected!')
 
         # Find client
-        client = find_client_with_request_data(self)
+        #client = find_client_with_request_data(self)
 
         # Delete client buffer
-        del client.buffer
+        #if client.buffer is not None:
+        #    del client.buffer
 
         # Remove client from set
-        clients.remove(client)
+        #del clients[client.uuid]
+
 
 class rest_handler(web.RequestHandler):
     
     def get(self, *args):
         # Create client object and add to set
-        client = Client(ip = self.request.remote_ip, uuid = uuid.uuid4())
-        clients.add(client)
+        id = uuid.uuid4()
+
+        client = Client(uuid = str(id))
+        clients[str(id)] = client
 
         # Get an equation from db
 
         # Create json
         data = {
             'equation': '2 + 2 = 4',
-            'uuid': str(client.uuid)
+            'uuid': str(id)
         }
 
         # Send equation and uuid to client
