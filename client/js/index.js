@@ -126,36 +126,53 @@ Canvas.prototype.onMouseUp = function (event) {
 
     this.releaseTimeout = setTimeout(function () {
         if(this.isMouseDown === false){
-            this.onComplete(true);
+            this.onComplete(this.DOMElement[0].toDataURL());
+
+            //Clear canvas and release timeout
+            this.context.clearRect(0,0, this.context.canvas.width, this.context.canvas.height);
             this.releaseTimeout = null;
         }
     }.bind(this), 2000)
 };
 
 
-function onCompleteDrawing(callback){
-    console.log(document.getElementById('canvas').toDataURL());
-    $.post("/api", {b64_str: document.getElementById('canvas').toDataURL()}, callback)
+function onCompleteDrawing(dataURL, callback){
+    $.post("/api", {b64_str: dataURL}, function (data, status) {
+        if(status !== "success"){
+            return callback(data);
+        }
+        var parsedData = JSON.parse(data);
+        callback(null, parsedData)
+
+    })
 }
 
 var uuid = '';
 
-function setNewEquation(DOMElement) {
-    $.get("/api", function(data, status){
-        if(status === 'success'){
-            console.log("Data", data);
-            let parsedData = JSON.parse(data);
-            console.log(parsedData.equation);
-            console.log(parsedData.uuid);
-            uuid = parsedData.uuid;
+function initializeServer(callback) {
+    $.get("/api", function (data, status) {
+        if(!status === "success"){
+            return callback(data);
         }
+        var parsedData = JSON.parse(data);
+        callback(null, parsedData);
     });
 }
 
+function handleError(error) {
+    console.log("Error", error);
+    alert("Noe gikk galt. Laster siden på nytt");
+    location.reload();
+
+}
 $(document).ready(function () {
     //Get canvas and prepare
 
     var canvas = new Canvas($("#canvas"));
+
+    var equation = $("#equation");
+    console.log("EQ1", equation);
+    console.log("EQ2", equation[0]);
 
     var messageService = new MessageService(new WebSocket('ws://localhost:8080/ws'));
 
@@ -163,21 +180,31 @@ $(document).ready(function () {
         messageService.send({x1: x1, y1: y1, x2: x2, y2: y2, timestamp: performance.now(), uuid: uuid})
     };
 
-    canvas.onComplete = function (success) {
-        //Canvas has not been touched in 1 second
-        if(success){
-            //If a correct drawing is drawn, send a post
-            onCompleteDrawing(function (message, status) {
-                //If post request was successful
-                if(status === 'success'){
-                    //Get and set a new equation (TODO: Input correct dom element)
-                    console.log("Setting new equation");
-                    setNewEquation()
-                }
-            });
-        }
+    //Canvas has not been touched in 1 second
+    canvas.onComplete = function (dataURL) {
+        equation.text("");
+
+        //If a correct drawing is drawn, send a post
+        onCompleteDrawing(dataURL, function (error, result) {
+            if(error){
+                return handleError(error)
+            }
+
+            equation.text(result.equation);
+
+        });
     };
 
     //Get initial function (TODO: Insert correct dom element)
-    setNewEquation()
+    initializeServer(function (error, result) {
+        if(error){
+            return handleError(error)
+        }
+        console.log("Equation", result.equation);
+        console.log("UUID", result.uuid);
+
+        equation.text(result.equation);
+        uuid = result.uuid;
+
+    })
 });
