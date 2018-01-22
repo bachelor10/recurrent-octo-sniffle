@@ -134,7 +134,8 @@ Canvas.prototype.onMouseUp = function (event) {
 
 
 function onCompleteDrawing(callback){
-    $.post("/api", {}, callback)
+    console.log(document.getElementById('canvas').toDataURL());
+    $.post("/api", {b64_str: document.getElementById('canvas').toDataURL()}, callback)
 }
 
 var uuid = '';
