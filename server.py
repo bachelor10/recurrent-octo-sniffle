@@ -96,8 +96,17 @@ class rest_handler(web.RequestHandler):
         # Reset buffer
 
         # Get an equation from db
+        equation = '4 - 1 = 3'
 
         # Send equation to client
+
+        data = {
+            'equation': equation
+        }
+
+        self.write(json.dumps(data))
+
+
 
 
 class IndexHandler(web.RequestHandler):
