@@ -136,18 +136,23 @@ Canvas.prototype.onMouseUp = function (event) {
 };
 
 
-function onCompleteDrawing(dataURL, callback){
-    $.post("/api", {b64_str: dataURL}, function (data, status) {
-        if(status !== "success"){
-            return callback(data);
-        }
-        var parsedData = JSON.parse(data);
-        callback(null, parsedData)
+function onCompleteDrawing(uuid, dataURL, callback) {
 
-    })
+    $.ajax({
+        type: "POST",
+        url: "/api",
+        data: {
+            uuid: uuid,
+            b64_str: dataURL
+        },
+        contentType: 'application/x-www-form-urlencoded',
+        success: function (data) {
+            var parsedData = JSON.parse(data);
+            callback(null, parsedData)
+        }
+    });
 }
 
-var uuid = '';
 
 function initializeServer(callback) {
     $.get("/api", function (data, status) {
@@ -166,6 +171,9 @@ function handleError(error) {
 
 }
 $(document).ready(function () {
+
+    var uuid = '';
+
     //Get canvas and prepare
 
     var canvas = new Canvas($("#canvas"));
@@ -185,7 +193,7 @@ $(document).ready(function () {
         equation.text("");
 
         //If a correct drawing is drawn, send a post
-        onCompleteDrawing(dataURL, function (error, result) {
+        onCompleteDrawing(uuid, dataURL, function (error, result) {
             if(error){
                 return handleError(error)
             }
