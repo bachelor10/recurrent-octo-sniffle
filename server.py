@@ -4,9 +4,10 @@ import os, uuid, json, base64_converter
 
 
 class Client:
-    def __init__(self, uuid):
+    def __init__(self, uuid, current_equation):
         self.buffer = []
         self.uuid = uuid
+        self.current_equation = current_equation
         self.data = None
 
 
@@ -63,16 +64,17 @@ class WebSocket(websocket.WebSocketHandler):
 class rest_handler(web.RequestHandler):
     def get(self, *args):
         # Create client object and add to set
-        id = uuid.uuid4()
+        id = uuid.uuid4() 
+        equation = '2 + 2 = 4'
 
-        client = Client(uuid=str(id))
+        client = Client(uuid=str(id), current_equation=equation)
         clients[str(id)] = client
 
         # Get an equation from db
 
         # Create json
         data = {
-            'equation': '2 + 2 = 4',
+            'equation': equation,
             'uuid': str(id)
         }
 
@@ -80,14 +82,14 @@ class rest_handler(web.RequestHandler):
         self.write(json.dumps(data))
 
     def post(self):
-        print(self.request.remote_ip)
-        # Extract IP and UUID
+        # Extract UUID
+        id = self.get_body_argument("uuid")
 
         # Find client in set
+        client = find_client(id)
 
-        # Extract image
-        base64_converter.convertToImg(self.get_body_argument("b64_str"))
-        # Save image
+        # Extract image and save image
+        base64_converter.convertToImg(self.get_body_argument("b64_str"), client.current_equation)
 
         # Send client buffer to db
 

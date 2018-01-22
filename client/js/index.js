@@ -134,8 +134,17 @@ Canvas.prototype.onMouseUp = function (event) {
 
 
 function onCompleteDrawing(callback){
-    console.log(document.getElementById('canvas').toDataURL());
-    $.post("/api", {b64_str: document.getElementById('canvas').toDataURL()}, callback)
+    $.ajax({
+        type: "POST",
+        url: "/api",
+        data: {
+            uuid: uuid,
+            b64_str: document.getElementById('canvas').toDataURL()
+        },
+        contentType: 'application/x-www-form-urlencoded',
+        success: callback
+    });
+
 }
 
 var uuid = '';
