@@ -54,13 +54,25 @@ for group in root.findall('{http://www.w3.org/2003/InkML}traceGroup'):
 
 
 # +
-add_line_hor = np.array(segments[2]["traces"][0]).astype(np.float)
-add_line_ver = np.array(segments[2]["traces"][1]).astype(np.float)
+y = np.array(segments[0]["traces"][0]).astype(np.float)
 
-x, y = add_line_hor.T
+x, y = y.T
 
-left_bar = x.min()
-right_bar = x.max()
-top_bar = y.max()
-bottom_bar = y.min()
+width = x.max() - x.min()
+height = y.max() - y.min()
 
+goal = 24
+
+scale = width / height
+
+new_y = scale_linear_bycolumn(y, high=24, low=0)
+side = (scale/2)*24
+new_x = scale_linear_bycolumn(x, high=(24-side), low=(side))
+
+
+plt.scatter(new_y, new_x)
+
+plt.xlim(0, 24)
+plt.ylim(0, 24)
+
+plt.show()
