@@ -64,7 +64,7 @@ class WebSocket(websocket.WebSocketHandler):
 class rest_handler(web.RequestHandler):
     def get(self, *args):
         # Create client object and add to set
-        id = uuid.uuid4() 
+        id = uuid.uuid4()
         equation = '2 + 2 = 4'
 
         client = Client(uuid=str(id), current_equation=equation)
@@ -98,9 +98,9 @@ class rest_handler(web.RequestHandler):
 
         # Get an equation from db
         equation = '4 - 1 = 3'
+        client.current_equation = equation
 
         # Send equation to client
-
         data = {
             'equation': equation
         }
