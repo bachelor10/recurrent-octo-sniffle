@@ -1,27 +1,34 @@
 from PIL import Image
 
 
-def image_to_bitmap(filename, output_name):
-    image = Image.open(filename)
-    image.convert("RGBA")  # Convert this to RGBA if possible
 
-    pixel_data = image.load()
+from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 
-    if image.mode == "RGBA":
-        # If the image has an alpha channel, convert it to white
-        # Otherwise we'll get weird pixels
-        for y in range(image.size[1]):  # For each row ...
-            for x in range(image.size[0]):  # Iterate through each column ...
-                # Check if it's opaque
-                if pixel_data[x, y][3] < 255:
-                    # Replace the pixel data with the colour white
-                    pixel_data[x, y] = (255, 255, 255, 255)
+def transform_image(image):
+    datagen = ImageDataGenerator(
+        rotation_range=40,
+        width_shift_range=0.2,
+        height_shift_range=0.2,
+        shear_range=0.2,
+        zoom_range=0.2,
+        horizontal_flip=True,
+        fill_mode='nearest')
 
-    # Resize the image thumbnail
-    image.save("ola.bmp")
+    x = img_to_array(image)  # this is a Numpy array with shape (3, 150, 150)
+    x = x.reshape((1,) + x.shape)  # this is a Numpy array with shape (1, 3, 150, 150)
+
+    # the .flow() command below generates batches of randomly transformed images
+    # and saves the results to the `preview/` directory
+    i = 0
+    for batch in datagen.flow(x, batch_size=1,
+                              save_to_dir='preview', save_prefix='cat', save_format='jpeg'):
+        i += 1
+        if i > 20:
+            break  # otherwise the generator would loop indefinitely
 
 
-infile = "../bitmap_data/2 + 2 = 4.png"
 
-image_to_bitmap(infile, "ola.bmp")
 
+img = load_img('../bitmap_data/1516694853600.png')  # this is a PIL image
+
+transform_image(img)

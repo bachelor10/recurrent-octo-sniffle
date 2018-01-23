@@ -2,6 +2,8 @@ import base64 as b64
 import re
 from PIL import Image
 from io import BytesIO
+import re, time, json
+from tinydb import TinyDB, Query
 
 # Inspo https://stackoverflow.com/questions/41957490/send-canvas-image-data-uint8clampedarray-to-flask-server-via-ajax
 
@@ -22,15 +24,19 @@ def image_to_bitmap(image):
                     # Replace the pixel data with the colour white
                     pixel_data[x, y] = (255, 255, 255, 255)
 
-    # Resize the image thumbnail
-    return image.convert("RGB")
+
+    image.convert("RGB")
+    return image
 
 
 # this method converts a base 64 string to an image
 # img_string is an string representation of an image
 def convertToImg(img_string, equation):
     img_data = b64.standard_b64decode(re.sub('^data:image/.+;base64,', '', img_string))
-    file = './bitmap_data/' + equation + '.png'
+
+    ms = str(int(round(time.time() * 1000)))
+
+    file = './bitmap_data/' + ms + '.png'
 
     im = Image.open(BytesIO(img_data))
 
@@ -38,7 +44,11 @@ def convertToImg(img_string, equation):
 
     im.save(file)
 
+    
 
-    #print("Image data: ", img_data)
-    #with open(file, 'wb') as fh: # filehandler
-    #    fh.write(img_data)
+    with TinyDB('solutions.json') as db:
+        db.insert({
+            ms: equation
+        })
+
+    

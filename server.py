@@ -91,6 +91,7 @@ class rest_handler(web.RequestHandler):
         # Extract image and save image
         base64_converter.convertToImg(self.get_body_argument("b64_str"), client.current_equation)
 
+        
         # Send client buffer to db
 
         # Reset buffer
