@@ -1,14 +1,35 @@
 from tornado import websocket, web, ioloop
 
-import os, uuid, json, base64_converter
+import os, uuid, json, base64_converter, logging
 
 
 class Client:
     def __init__(self, uuid, current_equation):
-        self.buffer = []
+        self.buffer = []  # this is going to be a list of lists
         self.uuid = uuid
         self.current_equation = current_equation
         self.data = None
+        print("New client with uuid: ", uuid)
+
+    # msg is a map
+    def to_buffer(self, msg):
+        if 'traceid' in msg:
+            traceid = msg['traceid']
+            print("Traceid: ", traceid)
+            if len(self.buffer) - 1 < traceid:
+                self.buffer.append([])
+            if 'x1' in msg and 'y1' in msg:  # Make sure to only add pairs of coordinates.
+                self.buffer[traceid].append(int(msg['x1']))
+                self.buffer[traceid].append(int(msg['y1']))
+            if 'x2' in msg and 'y2' in msg:
+                self.buffer[traceid].append(int(msg['x2']))
+                self.buffer[traceid].append(int(msg['y2']))
+        else:
+            print("Found no traceid.")
+
+    # now the buffers are filled, with each trace as a list.
+    def to_inkml(self):
+        pass
 
 
 def find_client(uuid):
@@ -18,7 +39,7 @@ def find_client(uuid):
 
 def find_client_with_request_data(data):
     for k, client in clients.items():
-        if (client.data == data):
+        if client.data == data:
             return client
 
     return None
@@ -33,6 +54,7 @@ class WebSocket(websocket.WebSocketHandler):
 
     def on_message(self, message):
         parsed_message = json.loads(message)
+        print("on_message: ", parsed_message)
 
         # Find client
         client = find_client(parsed_message['uuid'])
@@ -41,24 +63,42 @@ class WebSocket(websocket.WebSocketHandler):
         parsed_message.pop('uuid', None)
 
         # Add data to buffer
-        client.buffer.append(message)
+        # if 'status' in parsed_message and 'traceid' in parsed_message:
+        #    if parsed_message['status'] == 'End':
+        #        client.buffer.append(message)  # this should make the buffer of a client a list og lists.
+        #        print(client.buffer)
 
-        # Set client data if not set
+        # this passes data in inkml format to to_buffer method.
+        # param is parsed json
+        if client:
+            if 'status' in parsed_message:
+                if parsed_message['status'] == 201:  # http created = 201
+                    # pass to inkml creation
+                    print("InkML config.")
+                    pass
+            # elif 'status' in parsed_message:
+            else:
+                client.to_buffer(parsed_message)
+
+
+
+                # Set client data if not set
         if not client.data:
             client.data = self
 
     def on_close(self):
-        print('Client disconnected!')
+        print('Client disconnected with: ', self)
 
         # Find client
-        # client = find_client_with_request_data(self)
+        # client = find_client_with_request_data(self) # this can be none
 
         # Delete client buffer
-        # if client.buffer is not None:
-        #    del client.buffer
+        # if client is not None:
+        #   if client.buffer is not None:
+        #        del client.buffer
 
         # Remove client from set
-        # del clients[client.uuid]
+        # del clients[client.uuid] #TODO handle possible keyerror
 
 
 class rest_handler(web.RequestHandler):
@@ -91,7 +131,6 @@ class rest_handler(web.RequestHandler):
         # Extract image and save image
         base64_converter.convertToImg(self.get_body_argument("b64_str"), client.current_equation)
 
-        
         # Send client buffer to db
 
         # Reset buffer
@@ -106,8 +145,6 @@ class rest_handler(web.RequestHandler):
         }
 
         self.write(json.dumps(data))
-
-
 
 
 class IndexHandler(web.RequestHandler):
