@@ -1,21 +1,20 @@
 from tornado import websocket, web, ioloop
 
-import os, uuid, json, base64_converter, logging
+import os, uuid, json, base64_converter
 
 
 class Client:
     def __init__(self, uuid, current_equation):
-        self.buffer = []  # this is going to be a list of lists
+        self.buffer = []  # this is going to be a list of lists, but it's initialized in to_buffer method
         self.uuid = uuid
         self.current_equation = current_equation
         self.data = None
         print("New client with uuid: ", uuid)
 
-    # msg is a map
+    # msg is a dict
     def to_buffer(self, msg):
         if 'traceid' in msg:
             traceid = msg['traceid']
-            print("Traceid: ", traceid)
             if len(self.buffer) - 1 < traceid:
                 self.buffer.append([])
             if 'x1' in msg and 'y1' in msg:  # Make sure to only add pairs of coordinates.
@@ -24,12 +23,18 @@ class Client:
             if 'x2' in msg and 'y2' in msg:
                 self.buffer[traceid].append(int(msg['x2']))
                 self.buffer[traceid].append(int(msg['y2']))
+            print(self.buffer)
         else:
             print("Found no traceid.")
 
     # now the buffers are filled, with each trace as a list.
     def to_inkml(self):
-        pass
+        raise NotImplementedError()
+
+
+    def parse_overlapping(self):
+        raise NotImplementedError()
+
 
 
 def find_client(uuid):
@@ -54,7 +59,7 @@ class WebSocket(websocket.WebSocketHandler):
 
     def on_message(self, message):
         parsed_message = json.loads(message)
-        print("on_message: ", parsed_message)
+        # print("on_message: ", parsed_message)
 
         # Find client
         client = find_client(parsed_message['uuid'])
@@ -123,12 +128,13 @@ class rest_handler(web.RequestHandler):
 
     def post(self):
         # Extract UUID
-        id = self.get_body_argument("uuid")
-
+        client_id = self.get_body_argument("uuid")
+        print(self.__str__())
         # Find client in set
-        client = find_client(id)
+        client = find_client(client_id)
 
         # Extract image and save image
+        # TODO handle NONETYPE
         base64_converter.convertToImg(self.get_body_argument("b64_str"), client.current_equation)
 
         # Send client buffer to db

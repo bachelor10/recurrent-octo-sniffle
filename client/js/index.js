@@ -229,6 +229,7 @@ $(document).ready(function () {
         );
         //If a correct drawing is drawn, send a post
         onCompleteDrawing(uuid, dataURL, function (error, result) {
+            // console.log(uuid, " AND ", dataURL);
             if(error){
                 return handleError(error)
             }
