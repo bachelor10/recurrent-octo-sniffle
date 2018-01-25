@@ -102,3 +102,7 @@ ENV/
 
 # IDEA
 .idea/
+
+/machine_learning/data/
+/machine_learning/validation/
+/machine_learning/train/

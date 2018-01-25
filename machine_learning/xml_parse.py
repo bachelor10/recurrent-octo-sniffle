@@ -1,14 +1,11 @@
 import xml.etree.ElementTree as ET
-import uuid, math
+import uuid, math, time
 import numpy as np
 import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
 from itertools import cycle
-
-tree = ET.parse('105_em_76.inkml')
-
-root = tree.getroot()
-
+import random
+import os
 
 def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0):#, maximum=None, minimum=None):
     mins = mi#np.min(rawpoints, axis=0)
@@ -148,14 +145,47 @@ def generate_bitmap(segment):
             draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
 
     filename = segment["truth"] + "_" + segment["id"] + ".bmp"
-    image.save(filename)
+    segment_id = segment["id"]
+    truth = segment["truth"]
+    return image, truth, segment_id
 
 def generate_bitmaps(segments):
     for segment in segments:
-        generate_bitmap(segment)
+        yield generate_bitmap(segment)
 
-segments = find_segments(root)
-generate_bitmaps(segments)
+
+dirs = ['validation', 'train']
+random.seed(100)
+for file in os.listdir(os.getcwd() + '/data'):
+    full_filename = os.getcwd() + '/data/' + file
+    tree = ET.parse(full_filename)
+
+    root = tree.getroot()
+
+    segments = find_segments(root)
+
+    for segment in segments:
+        image, truth, segment_id = generate_bitmap(segment)
+
+        directory = os.getcwd() + "/" + dirs[1]
+
+        if random.random() > 0.6:
+            directory = os.getcwd() + "/" + dirs[0]
+
+        subdir = directory + "/" + truth
+
+
+        filename = subdir + '/' + truth + "_" + segment_id + ".bmp"
+
+        if not os.path.exists(subdir):
+            os.makedirs(subdir)
+
+        image.save(filename)
+
+
+
+
+#generate_bitmaps(segments)
 
 #generate_bitmap(segments[0])
 
