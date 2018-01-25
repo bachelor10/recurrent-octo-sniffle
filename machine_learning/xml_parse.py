@@ -5,15 +5,18 @@ import matplotlib.pyplot as plt
 from PIL import Image, ImageDraw
 from itertools import cycle
 
-tree = ET.parse('trace_ex.inkml')
+tree = ET.parse('105_em_76.inkml')
 
 root = tree.getroot()
 
 
-def scale_linear_bycolumn(rawpoints, high=24, low=0):
-    mins = np.min(rawpoints, axis=0)
-    maxs = np.max(rawpoints, axis=0)
+def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0):#, maximum=None, minimum=None):
+    mins = mi#np.min(rawpoints, axis=0)
+    maxs = ma#np.max(rawpoints, axis=0)
+    print("min", mi)
+    print("max", ma)
     rng = maxs - mins
+    print("RNG", rng)
     return high - (((high - low) * (maxs - rawpoints)) / rng)
 
 
@@ -62,8 +65,9 @@ def find_segments(root):
 def generate_bitmap(segment):
 
     resolution = 24
+    image_resolution = 26
 
-    image = Image.new('L', (resolution, resolution), "white")
+    image = Image.new('L', (image_resolution, image_resolution), "white")
     draw = ImageDraw.Draw(image)
     
     max_x = 0
@@ -98,10 +102,10 @@ def generate_bitmap(segment):
     print("Truth ", segment["truth"])
     if scale > 1:
         # width > height
-        height_scale = 24 / scale
+        height_scale = resolution / scale
     else:
         # width < height
-        width_scale = 24 * scale
+        width_scale = resolution * scale
     
     print("width", width_scale)
     print("height", height_scale)
@@ -114,18 +118,24 @@ def generate_bitmap(segment):
         new_x = []
         new_y = []
 
+        print("x", x)
+        print("y", y)
+
         if width_scale > 0:
             # add padding in x-direction
-            new_y = scale_linear_bycolumn(y, high=resolution, low=0)
-            side = (24 - width_scale)/2
+            new_y = scale_linear_bycolumn(y, high=resolution, low=0, ma=max_y, mi=min_y)
+            side = (resolution - width_scale)/2
             print("side", side)
-            new_x = scale_linear_bycolumn(x, high=(resolution-side), low=(side))
+            new_x = scale_linear_bycolumn(x, high=(resolution-side), low=(side), ma=max_x, mi=min_x)
             print(new_x)
         else:
             # add padding in y-direction
-            new_x = scale_linear_bycolumn(x, high=resolution, low=0)
-            side = (24 - height_scale)/2
-            new_y = scale_linear_bycolumn(y, high=(resolution-side), low=(side))
+            new_x = scale_linear_bycolumn(x, high=resolution, low=0, ma=max_x, mi=min_x)#, maximum=(max_x, max_y), minimum=(min_x, min_y))
+            side = (resolution - height_scale)/2
+            print("side", side)
+            new_y = scale_linear_bycolumn(y, high=(resolution-side), low=(side), ma=max_y, mi=min_y)#, maximum=(max_x, max_y), minimum=(min_x, min_y))
+            print("new_x", new_x)
+            print("new_y", new_y)
 
 
         coordinates = list(zip(new_x, new_y))
@@ -147,5 +157,5 @@ def generate_bitmaps(segments):
 segments = find_segments(root)
 generate_bitmaps(segments)
 
-
+#generate_bitmap(segments[0])
 
