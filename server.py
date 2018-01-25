@@ -1,7 +1,6 @@
 from tornado import websocket, web, ioloop
-
+from predictor import Predictor
 import os, uuid, json, base64_converter
-
 
 class Client:
     def __init__(self, uuid, current_equation):
@@ -17,15 +16,20 @@ class Client:
             traceid = msg['traceid']
             if len(self.buffer) - 1 < traceid:
                 self.buffer.append([])
+                """if 'x1' in msg and 'y1' in msg:  # Make sure to only add pairs of coordinates.
+                    self.buffer[traceid].append(int(msg['x1']))
+                    self.buffer[traceid].append(int(msg['y1']))
+                if 'x2' in msg and 'y2' in msg:
+                    self.buffer[traceid].append(int(msg['x2']))
+                    self.buffer[traceid].append(int(msg['y2']))"""
+
             if 'x1' in msg and 'y1' in msg:  # Make sure to only add pairs of coordinates.
-                self.buffer[traceid].append(int(msg['x1']))
-                self.buffer[traceid].append(int(msg['y1']))
+                self.buffer[traceid].append([int(msg['x1']), int(msg['y1'])])
             if 'x2' in msg and 'y2' in msg:
-                self.buffer[traceid].append(int(msg['x2']))
-                self.buffer[traceid].append(int(msg['y2']))
-            print(self.buffer)
-        else:
-            print("Found no traceid.")
+                self.buffer[traceid].append([int(msg['x2']), int(msg['y2'])])
+
+            else:
+                print("Found no traceid.")
 
     # now the buffers are filled, with each trace as a list.
     def to_inkml(self):
@@ -52,6 +56,7 @@ def find_client_with_request_data(data):
 
 clients = dict()
 
+predictor = Predictor()
 
 class WebSocket(websocket.WebSocketHandler):
     def open(self):
@@ -79,8 +84,12 @@ class WebSocket(websocket.WebSocketHandler):
             if 'status' in parsed_message:
                 if parsed_message['status'] == 201:  # http created = 201
                     # pass to inkml creation
-                    print("InkML config.")
-                    pass
+                    print("Running prediction")
+                    prediction = predictor.predict(client.buffer)
+
+                    for i, p in enumerate(prediction):
+                        print("Top", i+1, "is",p[0], "with val", p[1])
+
             # elif 'status' in parsed_message:
             else:
                 client.to_buffer(parsed_message)

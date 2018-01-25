@@ -153,39 +153,39 @@ def generate_bitmaps(segments):
     for segment in segments:
         yield generate_bitmap(segment)
 
+if __name__ == '__main__':
+    dirs = ['validation', 'train']
+    random.seed(100)
+    for file in os.listdir(os.getcwd() + '/data'):
+        full_filename = os.getcwd() + '/data/' + file
+        tree = ET.parse(full_filename)
 
-dirs = ['validation', 'train']
-random.seed(100)
-for file in os.listdir(os.getcwd() + '/data'):
-    full_filename = os.getcwd() + '/data/' + file
-    tree = ET.parse(full_filename)
+        root = tree.getroot()
 
-    root = tree.getroot()
+        segments = find_segments(root)
 
-    segments = find_segments(root)
+        for segment in segments:
+            image, truth, segment_id = generate_bitmap(segment)
 
-    for segment in segments:
-        image, truth, segment_id = generate_bitmap(segment)
+            directory = os.getcwd() + "/" + dirs[1]
 
-        directory = os.getcwd() + "/" + dirs[1]
+            if random.random() > 0.6:
+                directory = os.getcwd() + "/" + dirs[0]
 
-        if random.random() > 0.6:
-            directory = os.getcwd() + "/" + dirs[0]
-
-        subdir = directory + "/" + truth
-
-
-        filename = subdir + '/' + truth + "_" + segment_id + ".bmp"
-
-        if not os.path.exists(subdir):
-            os.makedirs(subdir)
-
-        image.save(filename)
+            subdir = directory + "/" + truth
 
 
+            filename = subdir + '/' + truth + "_" + segment_id + ".bmp"
+
+            if not os.path.exists(subdir):
+                os.makedirs(subdir)
+
+            image.save(filename)
 
 
-#generate_bitmaps(segments)
 
-#generate_bitmap(segments[0])
+
+    #generate_bitmaps(segments)
+
+    #generate_bitmap(segments[0])
 

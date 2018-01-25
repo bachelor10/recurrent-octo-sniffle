@@ -1,10 +1,145 @@
 import keras
+import math
+import numpy as np
+from PIL import Image, ImageDraw
+from itertools import cycle
+from io import BytesIO
 import os
+from machine_learning import xml_parse
+
+classes = os.listdir(os.getcwd() + '/machine_learning' + '/train')
 
 model_path = os.getcwd() + '/machine_learning/my_model.h5'
 
 class Predictor:
     def __init__(self):
+        print("Model path", model_path)
+        print("Classes", classes)
         self.model = keras.models.load_model(model_path)
 
-    def predict(self, ):
+    def predict(self, traces):
+        res = self.pre_process(traces)
+
+        prediction = self.model.predict(res)
+
+        pred_1 = (0, 10)
+        pred_2 = (0, 10)
+        pred_3 = (0, 10)
+        pred_4 = (0, 0)
+        pred_5 = (0, 0)
+
+        print("Full prediction", prediction[0])
+        for i, p in enumerate(prediction[0]):
+            print("Predicted: ", classes[i], "as", p)
+
+            if p > pred_1[1]:
+                pred_1 = (classes[i], p)
+
+            elif p > pred_2[1]:
+                pred_2 = (classes[i], p)
+
+            elif p > pred_3[1]:
+                pred_3 = (classes[i], p)
+
+            elif p > pred_4[1]:
+                pred_4 = (classes[i], p)
+
+            elif p > pred_5[1]:
+                pred_5 = (classes[i], p)
+
+
+
+        return [pred_1, pred_2, pred_3, pred_4, pred_5]
+
+    def pre_process(self, traces):
+        print("Preprocess!")
+        resolution = 24
+        image_resolution = 26
+
+        image = Image.new('L', (image_resolution, image_resolution), "white")
+        draw = ImageDraw.Draw(image)
+
+        max_x = 0
+        min_x = math.inf
+        max_y = 0
+        min_y = math.inf
+
+        print("Running traces!")
+
+        for trace in traces:
+            print("Trace", trace)
+            y = np.array(trace).astype(np.float)
+            x, y = y.T
+
+            if max_x < x.max():
+                max_x = x.max()
+
+            if max_y < y.max():
+                max_y = y.max()
+
+            if min_x > x.min():
+                min_x = x.min()
+
+            if min_y > y.min():
+                min_y = y.min()
+
+        width = max_x - min_x
+        height = max_y - min_y
+        scale = width / height
+
+        width_scale = 0
+        height_scale = 0
+
+        if scale > 1:
+            # width > height
+            height_scale = resolution / scale
+        else:
+            # width < height
+            width_scale = resolution * scale
+
+        print("width", width_scale)
+        print("height", height_scale)
+
+        for trace in traces:
+
+            y = np.array(trace).astype(np.float)
+            print("Y", y)
+
+            x, y = y.T
+
+            print("x", x)
+            print("y", y)
+
+            if width_scale > 0:
+                # add padding in x-direction
+                new_y = xml_parse.scale_linear_bycolumn(y, high=resolution, low=0, ma=max_y, mi=min_y)
+                side = (resolution - width_scale) / 2
+                print("side", side)
+                new_x = xml_parse.scale_linear_bycolumn(x, high=(resolution - side), low=(side), ma=max_x, mi=min_x)
+                print(new_x)
+            else:
+                # add padding in y-direction
+                new_x = xml_parse.scale_linear_bycolumn(x, high=resolution, low=0, ma=max_x,
+                                              mi=min_x)  # , maximum=(max_x, max_y), minimum=(min_x, min_y))
+                side = (resolution - height_scale) / 2
+                new_y = xml_parse.scale_linear_bycolumn(y, high=(resolution - side), low=(side), ma=max_y,
+                                              mi=min_y)  # , maximum=(max_x, max_y), minimum=(min_x, min_y))
+
+            print("New x", new_x)
+            print("New y", new_y)
+            coordinates = list(zip(new_x, new_y))
+            xy_cycle = cycle(coordinates)
+
+            next(xy_cycle)
+
+            for x_coord, y_coord in coordinates[:-1]:
+                next_coord = next(xy_cycle)
+                draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
+
+
+        i = image.convert('RGB')
+
+        print(i.size)
+        return np.asarray([np.asarray(i)])
+
+
