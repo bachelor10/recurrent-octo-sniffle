@@ -56,12 +56,15 @@ function Canvas(DOMElement) {
     this.prevX = null;
     this.prevy = null;
 
+    // traceId to recognize different buffers
+    this.traceId = 0;
+
     this.releaseTimeout = null;
 
     //These should be overridden
     this.onDraw = null;
     this.onComplete = null;
-
+    this.onCompleteBuffer = null;
 
 }
 
@@ -124,6 +127,13 @@ Canvas.prototype.onMouseUp = function (event) {
     this.prevX = undefined;
     this.prevY = undefined;
 
+    // Tells client to end current buffer line
+    // this.onCompleteBuffer(); // this function is not required anymore, since we are passing traceid in each trace through the socket.
+
+    // increment traceid
+    this.traceId++;
+
+
     this.releaseTimeout = setTimeout(function () {
         if(this.isMouseDown === false){
             this.onComplete(this.DOMElement[0].toDataURL());
@@ -185,15 +195,41 @@ $(document).ready(function () {
     var messageService = new MessageService(new WebSocket('ws://localhost:8080/ws'));
 
     canvas.onDraw = function (x1, y1, x2, y2) {
-        messageService.send({x1: x1, y1: y1, x2: x2, y2: y2, timestamp: performance.now(), uuid: uuid})
+        messageService.send(
+            {x1: x1, y1: y1, x2: x2, y2: y2,
+                timestamp: performance.now(),
+                uuid: uuid,
+                traceid: this.traceId // states length of trace list. (since it's sent on end of current trace group)
+            })
     };
+
+    // sends an end to the server, this consists of an msg and an id. id represents trace id in trace group
+    // TODO Delete this ( ? ) (this method shouldnt be needed anymore, validate.)
+    /*canvas.onCompleteBuffer = function () {
+        messageService.send(
+            {
+                status: 201, // http 201 Created
+                traceid: this.traceId,
+                uuid: uuid
+            }
+        )
+    };*/
+
+
 
     //Canvas has not been touched in 1 second
     canvas.onComplete = function (dataURL) {
         equation.text("");
-
+        messageService.send(
+            {
+                status: 201, // http 201 Created
+                traceid: this.traceId,
+                uuid: uuid
+            }
+        );
         //If a correct drawing is drawn, send a post
         onCompleteDrawing(uuid, dataURL, function (error, result) {
+            // console.log(uuid, " AND ", dataURL);
             if(error){
                 return handleError(error)
             }
