@@ -76,13 +76,13 @@ print("Fitting model")
 
 model.fit_generator(
         train_generator,
-        steps_per_epoch=1000,
-        epochs=2,
+        steps_per_epoch=2000,
+        epochs=10,
         validation_data=validation_generator,
         validation_steps=800)
 
 print("Done!")
-
+model.save('my_model.h5')  # creates a HDF5 file 'my_model.h5'
 #score = model.evaluate(x_test, y_test, verbose=0)
 #print('Test loss:', score[0])
 #print('Test accuracy:', score[1])
