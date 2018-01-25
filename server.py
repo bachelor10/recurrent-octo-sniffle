@@ -144,7 +144,7 @@ class rest_handler(web.RequestHandler):
 
         # Extract image and save image
         # TODO handle NONETYPE
-        base64_converter.convertToImg(self.get_body_argument("b64_str"), client.current_equation)
+        #base64_converter.convertToImg(self.get_body_argument("b64_str"), client.current_equation)
 
         # Send client buffer to db
 
