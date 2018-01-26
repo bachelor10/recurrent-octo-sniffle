@@ -87,8 +87,8 @@ class WebSocket(websocket.WebSocketHandler):
                     print("Running prediction")
                     prediction = predictor.predict(client.buffer)
 
-                    for i, p in enumerate(prediction):
-                        print("Top", i+1, "is",p[0], "with val", p[1])
+                    print("Predicted", prediction[0], "as", prediction[1])
+                    self.write_message("Predicted: " + prediction[0])
 
             # elif 'status' in parsed_message:
             else:

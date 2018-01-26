@@ -20,36 +20,18 @@ class Predictor:
     def predict(self, traces):
         res = self.pre_process(traces)
 
-        prediction = self.model.predict(res)
+        prediction = self.model.predict(res, steps=1, batch_size=None, verbose=1)
 
-        pred_1 = (0, 10)
-        pred_2 = (0, 10)
-        pred_3 = (0, 10)
-        pred_4 = (0, 0)
-        pred_5 = (0, 0)
+        best_pred = (0, 0)
 
-        print("Full prediction", prediction[0])
         for i, p in enumerate(prediction[0]):
             print("Predicted: ", classes[i], "as", p)
 
-            if p > pred_1[1]:
-                pred_1 = (classes[i], p)
-
-            elif p > pred_2[1]:
-                pred_2 = (classes[i], p)
-
-            elif p > pred_3[1]:
-                pred_3 = (classes[i], p)
-
-            elif p > pred_4[1]:
-                pred_4 = (classes[i], p)
-
-            elif p > pred_5[1]:
-                pred_5 = (classes[i], p)
+            if p > best_pred[1]:
+                best_pred = (i, p)
 
 
-
-        return [pred_1, pred_2, pred_3, pred_4, pred_5]
+        return classes[best_pred[0]], best_pred[1]
 
     def pre_process(self, traces):
         print("Preprocess!")
@@ -139,7 +121,14 @@ class Predictor:
 
         i = image.convert('LA')
 
-        print(np.asarray([np.asarray(i)]))
-        return np.asarray([np.asarray(i)])
+        arr = np.asarray(i)
 
+        formatted = []
+        for row in arr:
+            new_row = []
+            for col in row:
+                new_row.append(col[0])
 
+            formatted.append(new_row)
+        #print(np.asarray([np.asarray(i)]))
+        return np.asarray([np.asarray(formatted).reshape((26, 26, 1))])

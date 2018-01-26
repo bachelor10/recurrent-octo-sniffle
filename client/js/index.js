@@ -18,10 +18,12 @@ function MessageService (ws) {
     }.bind(this);
 
     ws.onmessage = function (message) {
+        alert(message.data);
         if(typeof this.onMessage === 'function'){
             this.onMessage(JSON.parse(message));
         }
     }.bind(this)
+
 }
 
 MessageService.prototype.send = function(message){
