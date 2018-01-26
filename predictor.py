@@ -137,9 +137,9 @@ class Predictor:
                 draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
 
 
-        i = image.convert('RGB')
+        i = image.convert('LA')
 
-        print(i.size)
+        print(np.asarray([np.asarray(i)]))
         return np.asarray([np.asarray(i)])
 
 

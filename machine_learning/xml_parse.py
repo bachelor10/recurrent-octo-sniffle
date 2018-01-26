@@ -7,13 +7,11 @@ from itertools import cycle
 import random
 import os
 
+classes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '=', '+']
 def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0):#, maximum=None, minimum=None):
     mins = mi#np.min(rawpoints, axis=0)
     maxs = ma#np.max(rawpoints, axis=0)
-    print("min", mi)
-    print("max", ma)
     rng = maxs - mins
-    print("RNG", rng)
     return high - (((high - low) * (maxs - rawpoints)) / rng)
 
 
@@ -36,7 +34,6 @@ def find_trace(root, id):
 
 def find_segments(root):
     segments = []
-
     for group in root.findall('{http://www.w3.org/2003/InkML}traceGroup'):
         for item in group.findall('{http://www.w3.org/2003/InkML}traceGroup'):
             
@@ -61,119 +58,122 @@ def find_segments(root):
 
 def generate_bitmap(segment):
 
-    resolution = 24
-    image_resolution = 26
+    try:
+        if(segment['truth'] not in classes): return None, None, None
 
-    image = Image.new('L', (image_resolution, image_resolution), "white")
-    draw = ImageDraw.Draw(image)
-    
-    max_x = 0
-    min_x = math.inf
-    max_y = 0
-    min_y = math.inf
+        resolution = 24
+        image_resolution = 26
 
-    for trace in segment["traces"]:
-        y = np.array(trace).astype(np.float)
+        image = Image.new('L', (image_resolution, image_resolution), "white")
+        draw = ImageDraw.Draw(image)
 
-        x, y = y.T
+        max_x = 0
+        min_x = math.inf
+        max_y = 0
+        min_y = math.inf
 
-        if max_x < x.max():
-            max_x = x.max()
-        
-        if max_y < y.max():
-            max_y = y.max()
+        for trace in segment["traces"]:
+            y = np.array(trace).astype(np.float)
 
-        if min_x > x.min():
-            min_x = x.min()
-            
-        if min_y > y.min():
-            min_y = y.min()
+            x, y = y.T
 
-    width = max_x - min_x
-    height = max_y - min_y
-    scale = width / height
+            if max_x < x.max():
+                max_x = x.max()
 
-    width_scale = 0
-    height_scale = 0
+            if max_y < y.max():
+                max_y = y.max()
 
-    print("Truth ", segment["truth"])
-    if scale > 1:
-        # width > height
-        height_scale = resolution / scale
-    else:
-        # width < height
-        width_scale = resolution * scale
-    
-    print("width", width_scale)
-    print("height", height_scale)
+            if min_x > x.min():
+                min_x = x.min()
 
-    for trace in segment["traces"]:
-        y = np.array(trace).astype(np.float)
+            if min_y > y.min():
+                min_y = y.min()
 
-        x, y = y.T
+        width = max_x - min_x
+        height = max_y - min_y
+        scale = width / height
 
-        new_x = []
-        new_y = []
+        width_scale = 0
+        height_scale = 0
 
-        print("x", x)
-        print("y", y)
-
-        if width_scale > 0:
-            # add padding in x-direction
-            new_y = scale_linear_bycolumn(y, high=resolution, low=0, ma=max_y, mi=min_y)
-            side = (resolution - width_scale)/2
-            print("side", side)
-            new_x = scale_linear_bycolumn(x, high=(resolution-side), low=(side), ma=max_x, mi=min_x)
-            print(new_x)
+        if scale > 1:
+            # width > height
+            height_scale = resolution / scale
         else:
-            # add padding in y-direction
-            new_x = scale_linear_bycolumn(x, high=resolution, low=0, ma=max_x, mi=min_x)#, maximum=(max_x, max_y), minimum=(min_x, min_y))
-            side = (resolution - height_scale)/2
-            print("side", side)
-            new_y = scale_linear_bycolumn(y, high=(resolution-side), low=(side), ma=max_y, mi=min_y)#, maximum=(max_x, max_y), minimum=(min_x, min_y))
-            print("new_x", new_x)
-            print("new_y", new_y)
+            # width < height
+            width_scale = resolution * scale
 
 
-        coordinates = list(zip(new_x, new_y))
-        xy_cycle = cycle(coordinates)
+        for trace in segment["traces"]:
+            y = np.array(trace).astype(np.float)
 
-        next(xy_cycle)
+            x, y = y.T
 
-        for x_coord, y_coord in coordinates[:-1]:
-            next_coord = next(xy_cycle)
-            draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
+            new_x = []
+            new_y = []
 
-    filename = segment["truth"] + "_" + segment["id"] + ".bmp"
-    segment_id = segment["id"]
-    truth = segment["truth"]
-    return image, truth, segment_id
+            if width_scale > 0:
+                # add padding in x-direction
+                new_y = scale_linear_bycolumn(y, high=resolution, low=0, ma=max_y, mi=min_y)
+                side = (resolution - width_scale)/2
+                new_x = scale_linear_bycolumn(x, high=(resolution-side), low=(side), ma=max_x, mi=min_x)
+            else:
+                # add padding in y-direction
+                new_x = scale_linear_bycolumn(x, high=resolution, low=0, ma=max_x, mi=min_x)#, maximum=(max_x, max_y), minimum=(min_x, min_y))
+                side = (resolution - height_scale)/2
+                new_y = scale_linear_bycolumn(y, high=(resolution-side), low=(side), ma=max_y, mi=min_y)#, maximum=(max_x, max_y), minimum=(min_x, min_y))
+
+
+            coordinates = list(zip(new_x, new_y))
+            xy_cycle = cycle(coordinates)
+
+            next(xy_cycle)
+
+            for x_coord, y_coord in coordinates[:-1]:
+                next_coord = next(xy_cycle)
+                draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
+
+        filename = segment["truth"] + "_" + segment["id"] + ".jpg"
+        segment_id = segment["id"]
+        truth = segment["truth"]
+        return image, truth, segment_id
+    except:
+        print("Item failed")
+        return None, None, None
 
 def generate_bitmaps(segments):
     for segment in segments:
         yield generate_bitmap(segment)
 
 if __name__ == '__main__':
+    count = 0
     dirs = ['validation', 'train']
     random.seed(100)
     for file in os.listdir(os.getcwd() + '/data'):
         full_filename = os.getcwd() + '/data/' + file
-        tree = ET.parse(full_filename)
+        try:
+            tree = ET.parse(full_filename)
+        except:
+            print("Failed to parse tree")
+            continue
 
         root = tree.getroot()
 
         segments = find_segments(root)
 
         for segment in segments:
+            count += 1
+            if count < 60000: continue
+            if count % 1000 == 0: print("Processing number", count)
             image, truth, segment_id = generate_bitmap(segment)
+            if image is None: continue
 
             directory = os.getcwd() + "/" + dirs[1]
 
-            if random.random() > 0.6:
+            if random.random() > 0.8:
                 directory = os.getcwd() + "/" + dirs[0]
 
             subdir = directory + "/" + truth
-
 
             filename = subdir + '/' + truth + "_" + segment_id + ".bmp"
 
