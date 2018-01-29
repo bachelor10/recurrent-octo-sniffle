@@ -143,6 +143,7 @@ Canvas.prototype.onMouseUp = function (event) {
             //Clear canvas and release timeout
             this.context.clearRect(0,0, this.context.canvas.width, this.context.canvas.height);
             this.releaseTimeout = null;
+            this.traceId = 0;
         }
     }.bind(this), 2000)
 };

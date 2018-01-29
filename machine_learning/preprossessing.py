@@ -61,7 +61,7 @@ model.add(Conv2D(32, kernel_size=(3, 3),
                  input_shape=(26, 26, 1)))
 model.add(Conv2D(64, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
-#model.add(Dropout(0.25))
+model.add(Dropout(0.25))
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
@@ -77,7 +77,7 @@ print("Fitting model")
 model.fit_generator(
         train_generator,
         steps_per_epoch=(44253 / 64),
-        epochs=1,
+        epochs=3,
         validation_data=validation_generator,
         validation_steps=800,
 )
