@@ -90,6 +90,8 @@ class WebSocket(websocket.WebSocketHandler):
                     print("Predicted", prediction[0], "as", prediction[1])
                     self.write_message("Predicted: " + prediction[0])
 
+                    client.buffer = []
+
             # elif 'status' in parsed_message:
             else:
                 client.to_buffer(parsed_message)
