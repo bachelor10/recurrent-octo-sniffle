@@ -23,11 +23,19 @@ class Predictor:
         # Create tracegroups
 
         print("Creating tracegroups")
-        '''
-        for i, trace in enumerate(traces[:-1]):
 
+        for i, trace in enumerate(traces[:-1]):
             for j, trace2 in enumerate(traces[i+1:]):
+                for coord1 in trace:
+                    for coord2 in trace2:
+                        #print(coord1, coord2)
+                        #print(coord1, coord2, math.hypot(coord2[0] - coord1[0], coord2[1] - coord1[1]))
+                        if math.hypot(coord2[0] - coord1[0], coord2[1] - coord1[1]) < 20:
+                            print("Close", i, (i+j+1))
+
                 
+
+        '''
                 line1_cycle = cycle(trace)
                 next(line1_cycle)
 
