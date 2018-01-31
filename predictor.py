@@ -6,6 +6,7 @@ from itertools import cycle
 from io import BytesIO
 import os
 from machine_learning import xml_parse
+import intersect
 
 classes = os.listdir(os.getcwd() + '/machine_learning' + '/train')
 
@@ -18,6 +19,33 @@ class Predictor:
         self.model = keras.models.load_model(model_path)
 
     def predict(self, traces):
+
+        # Create tracegroups
+
+        print("Creating tracegroups")
+        '''
+        for i, trace in enumerate(traces[:-1]):
+
+            for j, trace2 in enumerate(traces[i+1:]):
+                
+                line1_cycle = cycle(trace)
+                next(line1_cycle)
+
+                line2_cycle = cycle(trace2)
+                next(line2_cycle)
+
+                for k, coords in enumerate(trace[:-1]):
+                    coord_A = coords
+                    coord_B = next(line1_cycle)
+                    coord_C = trace2[k]
+                    coord_D = next(line2_cycle)
+
+                    #print(coord_A, coord_B, coord_C, coord_D)
+                    
+                    if intersect.intersect(coord_A, coord_B, coord_C, coord_D):
+                        #print("i", i)
+                        print("Intersect", coord_A, coord_B, coord_C, coord_D)
+        '''
         res = self.pre_process(traces)
 
         prediction = self.model.predict(res, steps=1, batch_size=None, verbose=1)
@@ -34,7 +62,6 @@ class Predictor:
         return classes[best_pred[0]], best_pred[1]
 
     def pre_process(self, traces):
-        print("Preprocess!")
         resolution = 24
         image_resolution = 26
 
@@ -46,10 +73,8 @@ class Predictor:
         max_y = 0
         min_y = math.inf
 
-        print("Running traces!")
 
         for trace in traces:
-            print("Trace", trace)
             y = np.array(trace).astype(np.float)
             x, y = y.T
 
@@ -79,26 +104,17 @@ class Predictor:
             # width < height
             width_scale = resolution * scale
 
-        print("width", width_scale)
-        print("height", height_scale)
-
         for trace in traces:
 
             y = np.array(trace).astype(np.float)
-            print("Y", y)
 
             x, y = y.T
-
-            print("x", x)
-            print("y", y)
 
             if width_scale > 0:
                 # add padding in x-direction
                 new_y = xml_parse.scale_linear_bycolumn(y, high=resolution, low=0, ma=max_y, mi=min_y)
                 side = (resolution - width_scale) / 2
-                print("side", side)
                 new_x = xml_parse.scale_linear_bycolumn(x, high=(resolution - side), low=(side), ma=max_x, mi=min_x)
-                print(new_x)
             else:
                 # add padding in y-direction
                 new_x = xml_parse.scale_linear_bycolumn(x, high=resolution, low=0, ma=max_x,
@@ -107,8 +123,6 @@ class Predictor:
                 new_y = xml_parse.scale_linear_bycolumn(y, high=(resolution - side), low=(side), ma=max_y,
                                               mi=min_y)  # , maximum=(max_x, max_y), minimum=(min_x, min_y))
 
-            print("New x", new_x)
-            print("New y", new_y)
             coordinates = list(zip(new_x, new_y))
             xy_cycle = cycle(coordinates)
 
