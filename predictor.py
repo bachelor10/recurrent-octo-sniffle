@@ -18,22 +18,63 @@ class Predictor:
         print("Classes", classes)
         self.model = keras.models.load_model(model_path)
 
+    def create_tracegroups(self, trace_pairs):
+        tracegroups = []       
+        tracegroups.append(set(list(trace_pairs)[0]))
+
+        for i, pair in enumerate(trace_pairs):
+            
+            for s in tracegroups:
+                if pair[0] in s:
+                    s.add(pair[1])
+                    break
+                else:
+                    new_set = set()
+                    new_set.add(pair[0])
+                    new_set.add(pair[1])
+                    tracegroups.append(new_set)
+        
+        return tracegroups
+
     def predict(self, traces):
 
         # Create tracegroups
 
         print("Creating tracegroups")
 
+        overlap_pairs = set()
+
         for i, trace in enumerate(traces[:-1]):
             for j, trace2 in enumerate(traces[i+1:]):
                 for coord1 in trace:
                     for coord2 in trace2:
-                        #print(coord1, coord2)
-                        #print(coord1, coord2, math.hypot(coord2[0] - coord1[0], coord2[1] - coord1[1]))
-                        if math.hypot(coord2[0] - coord1[0], coord2[1] - coord1[1]) < 20:
-                            print("Close", i, (i+j+1))
+                        if math.hypot(coord2[0] - coord1[0], coord2[1] - coord1[1]) < 10:
+                            overlap_pairs.add((i, i+j+1))
+
+                # Check lines between endpoints
+                overlap = intersect.intersect(trace[0], trace[-1], trace2[0], trace2[-1])
+                print("End to end overlap",overlap)
+                if(overlap):
+                    overlap_pairs.add((i, i+j+1))
 
                 
+
+        print("overlap_pairs", overlap_pairs)
+
+
+
+        if len(overlap_pairs) > 0:
+            tracegroups = self.create_tracegroups(overlap_pairs)
+            
+        # Add single traces to a tracegroup
+        for i, trace in enumerate(traces):
+            found = False
+            for group in tracegroups:
+                if i in group:
+                    found = True
+            if not found:
+                tracegroups.append(set([i]))
+        
 
         '''
                 line1_cycle = cycle(trace)
