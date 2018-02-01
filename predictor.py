@@ -65,7 +65,9 @@ class Predictor:
 
         if len(overlap_pairs) > 0:
             tracegroups = self.create_tracegroups(overlap_pairs)
-            
+        else:
+            tracegroups = []
+
         # Add single traces to a tracegroup
         for i, trace in enumerate(traces):
             found = False
@@ -75,7 +77,9 @@ class Predictor:
             if not found:
                 tracegroups.append(set([i]))
         
+        sorted_tracegroups = sorted(tracegroups, key=lambda m:next(iter(m)))
 
+        print(sorted_tracegroups)
         '''
                 line1_cycle = cycle(trace)
                 next(line1_cycle)
@@ -95,7 +99,27 @@ class Predictor:
                         #print("i", i)
                         print("Intersect", coord_A, coord_B, coord_C, coord_D)
         '''
-        res = self.pre_process(traces)
+
+        predictions = []
+
+        for group in sorted_tracegroups:
+            # lots of copying, TODO optimalize
+            res = [traces[i] for i in list(group)]
+            res_processed = self.pre_process(res)
+
+            prediction = self.model.predict(res_processed, steps=1, batch_size=None, verbose=1)
+
+            best_pred = (0, 0)
+
+            for i, p in enumerate(prediction[0]):
+                print("Predicted: ", classes[i], "as", p)
+
+                if p > best_pred[1]:
+                    best_pred = (i, p)
+                    predictions.append(best_pred)
+
+
+        ''' res = self.pre_process(traces)
 
         prediction = self.model.predict(res, steps=1, batch_size=None, verbose=1)
 
@@ -106,9 +130,16 @@ class Predictor:
 
             if p > best_pred[1]:
                 best_pred = (i, p)
+         '''
 
+        to_return = []
 
-        return classes[best_pred[0]], best_pred[1]
+        for p in predictions:
+            to_return.append((classes[p[0]], p[1]))
+
+        return to_return
+
+        #return classes[best_pred[0]], best_pred[1]
 
     def pre_process(self, traces):
         resolution = 24
