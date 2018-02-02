@@ -82,8 +82,8 @@ print("Fitting model")
 
 model.fit_generator(
         train_generator,
-        steps_per_epoch=(44357 / 64),
-        epochs=5,
+        steps_per_epoch=(44253 / 64),
+        epochs=3,
         validation_data=validation_generator,
         validation_steps=(10995 / 64),
 )
