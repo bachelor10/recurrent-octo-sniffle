@@ -8,19 +8,21 @@ import random
 import os
 import sys
 
-
 IMG_RESOLUTION = 36
 
 classes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '=', '+']
-def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0):#, maximum=None, minimum=None):
-    mins = mi#np.min(rawpoints, axis=0)
-    maxs = ma#np.max(rawpoints, axis=0)
+
+
+def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0):  # , maximum=None, minimum=None):
+    mins = mi  # np.min(rawpoints, axis=0)
+    maxs = ma  # np.max(rawpoints, axis=0)
+
     rng = maxs - mins
+    # print("RNG: ", mins, maxs)
     return high - (((high - low) * (maxs - rawpoints)) / rng)
 
 
 def format_trace(text):
-
     l = []
 
     for coord in text.split(','):
@@ -40,7 +42,7 @@ def find_segments(root):
     segments = []
     for group in root.findall('{http://www.w3.org/2003/InkML}traceGroup'):
         for item in group.findall('{http://www.w3.org/2003/InkML}traceGroup'):
-            
+
             id = uuid.uuid4()
 
             truth = item.find('{http://www.w3.org/2003/InkML}annotation').text
@@ -57,9 +59,6 @@ def find_segments(root):
     return segments
 
 
-
-
-
 class Segment:
 
     def __init__(self, id, truth):
@@ -72,26 +71,24 @@ class Segment:
         self.h = None
 
     def add_trace(self, trace):
-        self.traces.append(trace)
+        self.traces.append(np.asarray(trace).astype('float32'))
 
     def calculate_bounding_box(self):
 
-        right = np.max(t[:, :, 0])
-        left = np.min(t[:, :, 0])
+        right = 0
+        left = 0
+        top = 0
+        bottom = 0
 
-        top = np.min(t[:, :, 1])
-        bottom = np.max(t[:, :, 1])
-
-        for trace in self.traces:
-            t = np.asarray(trace).astype('float32')
-            print(t.shape)
-
-        t = np.asarray(self.traces).astype('float32')
-        right = np.max(t[:, :, 0])
-        left = np.min(t[:, :, 0])
-
-        top = np.min(t[:, :, 1])
-        bottom = np.max(t[:, :, 1])
+        t = []
+        # TODO Rework this. This shit makes no sense. Max of some value and infinity is infinity.
+        for i, trace in enumerate(self.traces):
+            t.append(np.asarray(trace).astype('float32'))
+            right = max(right, np.max(t[i][:, 0]))
+            left = min(left, np.min(t[i][:, 0]))
+            top = min(top, np.min(t[i][:, 1]))
+            bottom = max(bottom, np.max(t[i][: 1]))
+            # print("VAFFELRØRE:", right, left, top, bottom)
 
         self.x = (right + left) / 2
         self.y = (top + bottom) / 2
@@ -103,24 +100,27 @@ class Segment:
 
     def normalize(self, img_high, img_width, max_x, max_y, min_x, min_y):
 
-        #Normalize bounding box
+        # Normalize bounding box
+        # print("IN normalize: ", max_x, max_y)
         self.x = scale_linear_bycolumn(self.x, high=img_width, low=0, ma=max_x, mi=min_x)
         self.y = scale_linear_bycolumn(self.y, high=img_high, low=0, ma=max_y, mi=min_y)
         self.h = scale_linear_bycolumn(self.h, high=img_high, low=0, ma=max_y, mi=min_y)
         self.w = scale_linear_bycolumn(self.w, high=img_width, low=0, ma=max_x, mi=min_x)
 
-        #Normalize traces
+        # Normalize traces
 
         for i, trace in enumerate(self.traces):
-            self.traces[i, :, 0] = scale_linear_bycolumn(self.traces[i, :, 0], high=img_width, low=0, ma=max_x, mi=min_x)
-            self.traces[i, :, 1] = scale_linear_bycolumn(self.traces[i, :, 1], high=img_high, low=0, ma=max_y, mi=min_y)
+            trace[:, 0] = scale_linear_bycolumn(trace[i, 0], high=img_width, low=0, ma=max_x,
+                                                mi=min_x)
+            trace[:, 1] = scale_linear_bycolumn(trace[:, 1], high=img_high, low=0, ma=max_y, mi=min_y)
 
     def draw_symbol(self, draw):
 
         for trace in self.traces:
-            y = np.array(trace).astype(np.float)
+            y = np.array(trace).astype("float32")
 
             coordinates = list(zip(trace[:, 0], trace[:, 1]))
+            # print(coordinates)
             xy_cycle = cycle(coordinates)
 
             next(xy_cycle)
@@ -128,7 +128,6 @@ class Segment:
             for x_coord, y_coord in coordinates[:-1]:
                 next_coord = next(xy_cycle)
                 draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
-
 
     def generate_bitmap(self):
         try:
@@ -144,7 +143,7 @@ class Segment:
             min_y = math.inf
 
             for trace in self.traces:
-                y = np.array(trace).astype(np.float)
+                y = np.array(trace).astype("float32")
 
                 x, y = y.T
 
@@ -174,9 +173,8 @@ class Segment:
                 # width < height
                 width_scale = resolution * scale
 
-
             for trace in self.traces:
-                y = np.array(trace).astype(np.float)
+                y = np.array(trace).astype("float32")
 
                 x, y = y.T
 
@@ -186,14 +184,15 @@ class Segment:
                 if width_scale > 0:
                     # add padding in x-direction
                     new_y = scale_linear_bycolumn(y, high=resolution, low=0, ma=max_y, mi=min_y)
-                    side = (resolution - width_scale)/2
-                    new_x = scale_linear_bycolumn(x, high=(resolution-side), low=(side), ma=max_x, mi=min_x)
+                    side = (resolution - width_scale) / 2
+                    new_x = scale_linear_bycolumn(x, high=(resolution - side), low=(side), ma=max_x, mi=min_x)
                 else:
                     # add padding in y-direction
-                    new_x = scale_linear_bycolumn(x, high=resolution, low=0, ma=max_x, mi=min_x)#, maximum=(max_x, max_y), minimum=(min_x, min_y))
-                    side = (resolution - height_scale)/2
-                    new_y = scale_linear_bycolumn(y, high=(resolution-side), low=(side), ma=max_y, mi=min_y)#, maximum=(max_x, max_y), minimum=(min_x, min_y))
-
+                    new_x = scale_linear_bycolumn(x, high=resolution, low=0, ma=max_x,
+                                                  mi=min_x)  # , maximum=(max_x, max_y), minimum=(min_x, min_y))
+                    side = (resolution - height_scale) / 2
+                    new_y = scale_linear_bycolumn(y, high=(resolution - side), low=(side), ma=max_y,
+                                                  mi=min_y)  # , maximum=(max_x, max_y), minimum=(min_x, min_y))
 
                 coordinates = list(zip(new_x, new_y))
                 xy_cycle = cycle(coordinates)
@@ -211,7 +210,6 @@ class Segment:
 
 
 class Equation:
-
     IMG_HEIGHT = 40
     IMG_WIDTH = 120
 
@@ -221,7 +219,6 @@ class Equation:
         self.glob_min_x = math.inf
         self.glob_max_y = 0
         self.glob_min_y = math.inf
-
 
     def save(self):
         for segment in self.segments:
@@ -255,41 +252,30 @@ class Equation:
     def compute_global_boundaries(self):
 
         for segment in self.segments:
-
             max_x, max_y, min_x, min_y = segment.calculate_bounding_box()
 
-            if self.glob_max_x < max_x:
-                self.glob_max_x = max_x
+            self.glob_max_x = max(self.glob_max_x, max_x)
 
-            if self.glob_max_y < max_y:
-                self.glob_max_y = max_y
-
-            if self.glob_min_x > min_x:
-                self.glob_min_x = min_x
-
-            if self.glob_min_y > min_y:
-                self.glob_min_y = min_y
+            self.glob_max_y = max(self.glob_max_y, max_y)
+            self.glob_min_x = min(self.glob_min_x, min_x)
+            self.glob_min_y = min(self.glob_min_y, min_y)
+            print("GLOBS!!!", self.glob_max_x, self.glob_max_y, self.glob_min_x, self.glob_min_y, "\n")
 
     def create_image_and_scale(self):
 
-        image = Image.new('L', Equation.IMG_HEIGHT, Equation.IMG_WIDTH)
+        image = Image.new('L', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "white")
 
         draw = ImageDraw.Draw(image)
 
         for segment in self.segments:
+            segment.calculate_bounding_box()
 
-            segment.compute_bounding_box()
-
-            segment.normalize(Equation.IMG_HEIGHT, Equation.IMG_WIDTH, self.glob_max_x, self.glob_max_y, self.glob_min_x, self.glob_min_y)
+            segment.normalize(Equation.IMG_HEIGHT, Equation.IMG_WIDTH, self.glob_max_x, self.glob_max_y,
+                              self.glob_min_x, self.glob_min_y)
 
             segment.draw_symbol(draw)
 
         image.save('eksempel.bmp')
-
-
-
-
-
 
 
 if __name__ == '__main__':
@@ -314,13 +300,8 @@ if __name__ == '__main__':
         equation.create_image_and_scale()
         break
 
-        #equation.save()
+        # equation.save()
 
+    # generate_bitmaps(segments)
 
-
-
-
-    #generate_bitmaps(segments)
-
-    #generate_bitmap(segments[0])
-
+    # generate_bitmap(segments[0])
