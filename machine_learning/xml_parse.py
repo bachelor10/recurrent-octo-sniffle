@@ -59,10 +59,11 @@ def find_segments(root):
 def generate_bitmap(segment):
 
     try:
-        if(segment['truth'] not in classes): return None, None, None
 
-        resolution = 24
-        image_resolution = 26
+        if segment["truth"] == '|': return None, None, None
+
+        resolution = 32
+        image_resolution = 36
 
         image = Image.new('L', (image_resolution, image_resolution), "white")
         draw = ImageDraw.Draw(image)
@@ -163,15 +164,22 @@ if __name__ == '__main__':
 
         for segment in segments:
             count += 1
-            if count < 60000: continue
+            if count < 20000: continue
             if count % 1000 == 0: print("Processing number", count)
             image, truth, segment_id = generate_bitmap(segment)
-            if image is None: continue
 
+            if image is None: continue
             directory = os.getcwd() + "/" + dirs[1]
 
             if random.random() > 0.8:
                 directory = os.getcwd() + "/" + dirs[0]
+
+            if truth.isalpha():
+                if truth.isupper():
+                    truth = truth + "_"
+
+            if truth == '|':
+                truth = '_|'
 
             subdir = directory + "/" + truth
 

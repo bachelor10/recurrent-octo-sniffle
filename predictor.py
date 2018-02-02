@@ -13,25 +13,16 @@ model_path = os.getcwd() + '/machine_learning/my_model.h5'
 
 class Predictor:
     def __init__(self):
-        print("Model path", model_path)
-        print("Classes", classes)
         self.model = keras.models.load_model(model_path)
 
     def predict(self, traces):
         res = self.pre_process(traces)
 
-        prediction = self.model.predict(res, steps=1, batch_size=None, verbose=1)
+        prediction = self.model.predict_classes(res, batch_size=1, verbose=1)
 
-        best_pred = (0, 0)
+        print("Prediction", prediction)
 
-        for i, p in enumerate(prediction[0]):
-            print("Predicted: ", classes[i], "as", p)
-
-            if p > best_pred[1]:
-                best_pred = (i, p)
-
-
-        return classes[best_pred[0]], best_pred[1]
+        return classes[prediction[0]]
 
     def pre_process(self, traces):
         print("Preprocess!")
@@ -79,9 +70,6 @@ class Predictor:
             # width < height
             width_scale = resolution * scale
 
-        print("width", width_scale)
-        print("height", height_scale)
-
         for trace in traces:
 
             y = np.array(trace).astype(np.float)
@@ -96,7 +84,6 @@ class Predictor:
                 # add padding in x-direction
                 new_y = xml_parse.scale_linear_bycolumn(y, high=resolution, low=0, ma=max_y, mi=min_y)
                 side = (resolution - width_scale) / 2
-                print("side", side)
                 new_x = xml_parse.scale_linear_bycolumn(x, high=(resolution - side), low=(side), ma=max_x, mi=min_x)
                 print(new_x)
             else:
@@ -107,8 +94,6 @@ class Predictor:
                 new_y = xml_parse.scale_linear_bycolumn(y, high=(resolution - side), low=(side), ma=max_y,
                                               mi=min_y)  # , maximum=(max_x, max_y), minimum=(min_x, min_y))
 
-            print("New x", new_x)
-            print("New y", new_y)
             coordinates = list(zip(new_x, new_y))
             xy_cycle = cycle(coordinates)
 

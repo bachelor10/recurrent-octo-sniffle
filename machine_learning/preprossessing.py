@@ -14,10 +14,16 @@ from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_a
 
 def generate_dataset():
     print("Generating dataset")
-    train_generator = ImageDataGenerator(rescale = 1./255)
+    train_generator = ImageDataGenerator(
+        rescale = 1./255,
+        rotation_range = 0.20
+    )
     print("Generating validation")
 
-    validation_generator = ImageDataGenerator(rescale = 1./255)
+    validation_generator = ImageDataGenerator(
+        rescale = 1./255,
+        rotation_range=0.20
+    )
     print("Getting train data")
 
     train_generator = train_generator.flow_from_directory(
@@ -61,11 +67,11 @@ model.add(Conv2D(32, kernel_size=(3, 3),
                  input_shape=(26, 26, 1)))
 model.add(Conv2D(64, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2, 2)))
-#model.add(Dropout(0.25))
+model.add(Dropout(0.25))
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
-model.add(Dense(13, activation='softmax'))
+model.add(Dense(98, activation='softmax'))
 
 print("Compiling model")
 
@@ -76,10 +82,10 @@ print("Fitting model")
 
 model.fit_generator(
         train_generator,
-        steps_per_epoch=(44253 / 64),
-        epochs=1,
+        steps_per_epoch=(44357 / 64),
+        epochs=5,
         validation_data=validation_generator,
-        validation_steps=800,
+        validation_steps=(10995 / 64),
 )
 
 print("Done!")

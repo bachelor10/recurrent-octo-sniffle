@@ -106,13 +106,15 @@ Canvas.prototype.onMouseMove = function (event) {
             thisY = event.targetTouches[0].pageY - rect.top;
         }
 
+        //Dispatch a message if onDraw is specified
+        typeof this.onDraw === 'function' && this.onDraw(thisX, thisY);
+
+
         //If this is not the first press
         if(this.prevX && this.prevY){
             //Draw on canvas
             this.drawLine(this.prevX, this.prevY, thisX, thisY);
 
-            //Then dispatch a message if onDraw is specified
-            typeof this.onDraw === 'function' && this.onDraw(this.prevX, this.prevY, thisX, thisY);
 
         }
         //Store last position
@@ -143,6 +145,7 @@ Canvas.prototype.onMouseUp = function (event) {
             //Clear canvas and release timeout
             this.context.clearRect(0,0, this.context.canvas.width, this.context.canvas.height);
             this.releaseTimeout = null;
+            this.traceId = 0;
         }
     }.bind(this), 2000)
 };
