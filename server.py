@@ -28,8 +28,8 @@ class Client:
             if 'x2' in msg and 'y2' in msg:
                 self.buffer[traceid].append([int(msg['x2']), int(msg['y2'])])
 
-            else:
-                print("Found no traceid.")
+        else:
+            print("Found no traceid.")
 
     # now the buffers are filled, with each trace as a list.
     def to_inkml(self):
