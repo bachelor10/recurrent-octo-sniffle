@@ -14,8 +14,6 @@ model_path = os.getcwd() + '/machine_learning/my_model.h5'
 
 class Predictor:
     def __init__(self):
-        print("Model path", model_path)
-        print("Classes", classes)
         self.model = keras.models.load_model(model_path)
 
     def create_tracegroups(self, trace_pairs):
@@ -121,9 +119,9 @@ class Predictor:
 
         ''' res = self.pre_process(traces)
 
-        prediction = self.model.predict(res, steps=1, batch_size=None, verbose=1)
+        prediction = self.model.predict_classes(res, batch_size=1, verbose=1)
 
-        best_pred = (0, 0)
+        print("Prediction", prediction)
 
         for i, p in enumerate(prediction[0]):
             print("Predicted: ", classes[i], "as", p)

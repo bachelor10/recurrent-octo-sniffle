@@ -14,10 +14,16 @@ from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_a
 
 def generate_dataset():
     print("Generating dataset")
-    train_generator = ImageDataGenerator(rescale = 1./255)
+    train_generator = ImageDataGenerator(
+        rescale = 1./255,
+        rotation_range = 0.20
+    )
     print("Generating validation")
 
-    validation_generator = ImageDataGenerator(rescale = 1./255)
+    validation_generator = ImageDataGenerator(
+        rescale = 1./255,
+        rotation_range=0.20
+    )
     print("Getting train data")
 
     train_generator = train_generator.flow_from_directory(
@@ -65,7 +71,7 @@ model.add(Dropout(0.25))
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
-model.add(Dense(13, activation='softmax'))
+model.add(Dense(98, activation='softmax'))
 
 print("Compiling model")
 
@@ -79,7 +85,7 @@ model.fit_generator(
         steps_per_epoch=(44253 / 64),
         epochs=3,
         validation_data=validation_generator,
-        validation_steps=800,
+        validation_steps=(10995 / 64),
 )
 
 print("Done!")
