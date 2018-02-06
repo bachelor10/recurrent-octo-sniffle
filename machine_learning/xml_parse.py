@@ -276,6 +276,8 @@ class Equation:
 
         draw = ImageDraw.Draw(image)
 
+        bounding_boxes = []
+
         for segment in self.segments:
 
             segment.compute_bounding_box()
@@ -284,7 +286,9 @@ class Equation:
 
             segment.draw_symbol(draw)
 
-        image.save('eksempel.bmp')
+            bounding_boxes.append([segment.x, segment.y, segment.w, segment.h])
+
+        return (image, bounding_boxes)
 
 
 
@@ -292,10 +296,8 @@ class Equation:
 
 
 
-if __name__ == '__main__':
+def model_data_generator():
     count = 0
-    dirs = ['validation', 'train']
-    random.seed(100)
     for file in os.listdir(os.getcwd() + '/data'):
         full_filename = os.getcwd() + '/data/' + file
         try:
@@ -311,8 +313,10 @@ if __name__ == '__main__':
         equation = Equation(segments)
 
         equation.compute_global_boundaries()
-        equation.create_image_and_scale()
-        break
+
+        count += 1
+
+        yield equation.create_image_and_scale()
 
         #equation.save()
 
