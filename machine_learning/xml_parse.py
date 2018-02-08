@@ -331,7 +331,7 @@ class Equation:
 def model_data_generator():
     count = 0
     for file in os.listdir(os.getcwd() + '/data'):
-        if(count > 1000): break;
+        if count%100 == 0: print('Count', count)
         full_filename = os.getcwd() + '/data/' + file
         try:
             tree = ET.parse(full_filename)
@@ -348,6 +348,8 @@ def model_data_generator():
         equation.compute_global_boundaries()
 
         count += 1
+
+        
 
         yield equation.create_image_and_scale()
 

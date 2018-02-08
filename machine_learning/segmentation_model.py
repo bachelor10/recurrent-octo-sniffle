@@ -8,7 +8,7 @@ from io import BytesIO
 import numpy as np
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
 
-from machine_learning.xml_parse import model_data_generator
+from xml_parse import model_data_generator
 
 img = []
 bounding_list = []
@@ -22,7 +22,7 @@ for (image, bounding_boxes) in model_data_generator():
         if i == 10: break
         full_box[i] = box
 
-    bounding_list.append(full_box)
+    bounding_list.append(full_box.flatten())
     #img.append(np.asarray(image) / 255)
     #bounding_list.append(x/255 for x in bounding_boxes) # TODO this is the problem, scale down coordinates with 255, same as image data.
 
@@ -76,10 +76,10 @@ print("SHape", img.shape, bounding_list.shape)
 
 model = Sequential([
     Conv2D(32, kernel_size=(6, 6), input_shape=(32, 64, 2), dim_ordering='tf', activation='relu'),
-    #MaxPooling2D(pool_size=(3, 3)),
-    #Conv2D(64, filter_size, filter_size, dim_ordering='tf', activation='relu'),
-    #MaxPooling2D(pool_size=(pool_size, pool_size)),
-    #Conv2D(128, filter_size, filter_size, dim_ordering='tf', activation='relu'),
+    MaxPooling2D(pool_size=(3, 3)),
+    Conv2D(64, filter_size, filter_size, dim_ordering='tf', activation='relu'),
+    MaxPooling2D(pool_size=(pool_size, pool_size)),
+    Conv2D(128, filter_size, filter_size, dim_ordering='tf', activation='relu'),
     # #         MaxPooling2D(pool_size=(pool_size, pool_size)),
     #Conv2D(128, filter_size, filter_size, dim_ordering='tf', activation='relu'),
     # #         MaxPooling2D(pool_size=(pool_size, pool_size)),
@@ -87,7 +87,7 @@ model = Sequential([
     Dropout(0.4),
     Dense(256, activation='relu'),
     Dropout(0.4),
-    Dense(4)
+    Dense(40)
 ])
 
 # print(model.summary())
@@ -105,8 +105,8 @@ print("Fitting model")
 print("Input", img.shape, bounding_list.shape)
 model.fit(
     img,
-    bounding_list[:, 0],
-    epochs=5
+    bounding_list,
+    epochs=500
 )
 
 print("Done!")
@@ -114,4 +114,4 @@ model.save('segmentation_model.h5')
 
 from keras.utils import plot_model
 
-plot_model(model, to_file='model.png', show_shapes=True)
+#plot_model(model, to_file='model.png', show_shapes=True)
