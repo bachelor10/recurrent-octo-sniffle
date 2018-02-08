@@ -306,7 +306,7 @@ class Equation:
 
     def create_image_and_scale(self):
 
-        image = Image.new('LA', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "white")
+        image = Image.new('RGB', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "white")
 
         draw = ImageDraw.Draw(image)
 
@@ -359,3 +359,9 @@ def model_data_generator(limit=10000):
     # generate_bitmaps(segments)
 
     # generate_bitmap(segments[0])
+
+if __name__ == '__main__':
+    for img, box in model_data_generator(limit=1):
+        img.save("HOLA.png")
+        for col in np.asarray(img):
+            print(col)
