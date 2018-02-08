@@ -228,8 +228,8 @@ class Segment:
 
 
 class Equation:
-    IMG_HEIGHT = 200
-    IMG_WIDTH = 800
+    IMG_HEIGHT = 32
+    IMG_WIDTH = 64
 
     def __init__(self, segments):
         self.segments = segments
@@ -240,7 +240,7 @@ class Equation:
         self.width_scale = 0
         self.height_scale = 0
 
-    def save(self):
+    """def save(self):
         for segment in self.segments:
             x, y, h, w = segment.compute_bounding_box()
 
@@ -267,7 +267,7 @@ class Equation:
             if not os.path.exists(subdir):
                 os.makedirs(subdir)
 
-            image.save(filename)
+            image.save(filename)"""
 
 
     def compute_global_boundaries(self):
@@ -294,6 +294,7 @@ class Equation:
         bounding_boxes = []
 
         for segment in self.segments:
+            pass
         if scale > 1:
             self.height_scale = Equation.IMG_HEIGHT / scale
 
@@ -305,7 +306,7 @@ class Equation:
 
     def create_image_and_scale(self):
 
-        image = Image.new('L', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "white")
+        image = Image.new('LA', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "white")
 
         draw = ImageDraw.Draw(image)
 
@@ -330,6 +331,7 @@ class Equation:
 def model_data_generator():
     count = 0
     for file in os.listdir(os.getcwd() + '/data'):
+        if(count > 1000): break;
         full_filename = os.getcwd() + '/data/' + file
         try:
             tree = ET.parse(full_filename)
