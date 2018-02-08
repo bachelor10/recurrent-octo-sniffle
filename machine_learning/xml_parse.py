@@ -228,8 +228,8 @@ class Segment:
 
 
 class Equation:
-    IMG_HEIGHT = 32
-    IMG_WIDTH = 64
+    IMG_HEIGHT = 64
+    IMG_WIDTH = 128
 
     def __init__(self, segments):
         self.segments = segments
@@ -306,7 +306,7 @@ class Equation:
 
     def create_image_and_scale(self):
 
-        image = Image.new('RGB', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "white")
+        image = Image.new('L', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "white")
 
         draw = ImageDraw.Draw(image)
 
@@ -320,7 +320,7 @@ class Equation:
                               self.glob_min_x, self.glob_min_y, self.width_scale, self.height_scale)
             segment.draw_symbol(draw)
             segment.calculate_bounding_box()
-            segment.draw_bounding_box(draw)
+            #segment.draw_bounding_box(draw)
 
             bounding_boxes.append([segment.x, segment.y, segment.w, segment.h])
 
@@ -360,8 +360,8 @@ def model_data_generator(limit=10000):
 
     # generate_bitmap(segments[0])
 
-if __name__ == '__main__':
+''' if __name__ == '__main__':
     for img, box in model_data_generator(limit=1):
         img.save("HOLA.png")
         for col in np.asarray(img):
-            print(col)
+            print(col) '''
