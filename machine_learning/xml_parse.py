@@ -328,9 +328,10 @@ class Equation:
 
 
 
-def model_data_generator():
+def model_data_generator(limit=10000):
     count = 0
     for file in os.listdir(os.getcwd() + '/data'):
+        if count > limit: break
         if count%100 == 0: print('Count', count)
         full_filename = os.getcwd() + '/data/' + file
         try:
