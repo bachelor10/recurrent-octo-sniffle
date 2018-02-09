@@ -141,7 +141,7 @@ class Segment:
 
             for x_coord, y_coord in coordinates[:-1]:
                 next_coord = next(xy_cycle)
-                draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
+                draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="white", width=1)
     
     def draw_bounding_box(self, draw):
 
@@ -306,7 +306,7 @@ class Equation:
 
     def create_image_and_scale(self):
 
-        image = Image.new('L', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "white")
+        image = Image.new('LA', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "black")
 
         draw = ImageDraw.Draw(image)
 
@@ -360,8 +360,8 @@ def model_data_generator(limit=10000):
 
     # generate_bitmap(segments[0])
 
-''' if __name__ == '__main__':
+if __name__ == '__main__':
     for img, box in model_data_generator(limit=1):
         img.save("HOLA.png")
         for col in np.asarray(img):
-            print(col) '''
+            print(col)

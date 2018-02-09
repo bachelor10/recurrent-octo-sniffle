@@ -26,7 +26,7 @@ for (image, bounding_boxes) in model_data_generator(limit=0):
         if i == 10: break
         full_box[i] = box
 
-    bounding_list.append(full_box.flatten())
+    bounding_list.append(full_box)
 
 #bounding_list = np.asarray(bounding_list).astype('float32')
 np_img = np.asarray(img).astype('float32')
@@ -38,11 +38,12 @@ draw = ImageDraw.Draw(prediction_img)
     
     #draw.rectangle(((box[0] - box[2] / 2, box[1] - box[3] / 2), (box[0] + box[2] / 2, box[1] + box[3] / 2)), outline="green")
 
-predicted_boxes = model.predict(np_img)
+predicted_boxes = model.predict(np_img / 255)
 
-print(predicted_boxes.shape)
 print(np_img.shape)
-#predicted_boxes = np.reshape(predicted_boxes[0], (10, 4))
+predicted_boxes = np.reshape(predicted_boxes[0], (10, 4))
+print(predicted_boxes.shape)
+
 
 for box in predicted_boxes:
     print(box)
