@@ -62,10 +62,10 @@ class time_segmenter():
         for i, trace in enumerate(buffer[:-1]):
             time_arr[i] = (buffer[i+1][0][2] - buffer[i][-1][2])
 
-        print(time_arr)
+        print("time_arr",time_arr)
         return time_arr
 
-    def propability_traces(self):
+    def propability_traces(self, buffer):
         # an algorithm to determine by time if two slices are most likely a part of the same tracegroup.
         # a combination of checking avg time distance and a lookup to determine if that is correct should be implemented.
 
@@ -79,4 +79,25 @@ class time_segmenter():
                 low propability of same group.
                 save that aswell!
         '''
-        raise NotImplementedError()
+        # prob [0] = propability of trace 0 and 1 are of the same group
+        if not (len(buffer) > 1):
+            return 0
+
+        time_between = self.find_time_between(buffer)
+        print("time_between, ", time_between)
+        avg_time_between = 0
+        zeros = 0
+        for t in time_between:
+            if not(t < 1.0):
+                avg_time_between += t
+            else:
+                zeros += 1
+        if len(time_between - zeros) > 0:
+            avg_time_between /= (len(time_between) - zeros)
+        else:
+            avg_time_between /= len(time_between)
+        print("avg_time_between: ", avg_time_between)
+
+
+    if __name__ == '__main__':
+        print("H")
