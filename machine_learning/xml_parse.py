@@ -141,7 +141,7 @@ class Segment:
 
             for x_coord, y_coord in coordinates[:-1]:
                 next_coord = next(xy_cycle)
-                draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
+                draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="white", width=1)
     
     def draw_bounding_box(self, draw):
 
@@ -228,8 +228,8 @@ class Segment:
 
 
 class Equation:
-    IMG_HEIGHT = 200
-    IMG_WIDTH = 800
+    IMG_HEIGHT = 64
+    IMG_WIDTH = 128
 
     def __init__(self, segments):
         self.segments = segments
@@ -240,7 +240,7 @@ class Equation:
         self.width_scale = 0
         self.height_scale = 0
 
-    def save(self):
+    """def save(self):
         for segment in self.segments:
             x, y, h, w = segment.compute_bounding_box()
 
@@ -267,7 +267,7 @@ class Equation:
             if not os.path.exists(subdir):
                 os.makedirs(subdir)
 
-            image.save(filename)
+            image.save(filename)"""
 
 
     def compute_global_boundaries(self):
@@ -291,6 +291,10 @@ class Equation:
         scale = width / (height * img_ratio)
 
 
+        bounding_boxes = []
+
+        for segment in self.segments:
+            pass
         if scale > 1:
             self.height_scale = Equation.IMG_HEIGHT / scale
 
@@ -299,11 +303,14 @@ class Equation:
 
 
 
+
     def create_image_and_scale(self):
 
-        image = Image.new('L', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "white")
+        image = Image.new('LA', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "black")
 
         draw = ImageDraw.Draw(image)
+
+        bounding_boxes = []
 
         for segment in self.segments:
             #segment.calculate_bounding_box()
@@ -313,17 +320,19 @@ class Equation:
                               self.glob_min_x, self.glob_min_y, self.width_scale, self.height_scale)
             segment.draw_symbol(draw)
             segment.calculate_bounding_box()
-            segment.draw_bounding_box(draw)
+            #segment.draw_bounding_box(draw)
 
-        image.save('eksempel.bmp')
+            bounding_boxes.append([segment.x, segment.y, segment.w, segment.h])
+
+        return (image, bounding_boxes)
 
 
 
-if __name__ == '__main__':
+def model_data_generator(limit=10000):
     count = 0
-    dirs = ['validation', 'train']
-    random.seed(100)
     for file in os.listdir(os.getcwd() + '/data'):
+        if count > limit: break
+        if count%100 == 0: print('Count', count)
         full_filename = os.getcwd() + '/data/' + file
         try:
             tree = ET.parse(full_filename)
@@ -338,11 +347,21 @@ if __name__ == '__main__':
         equation = Equation(segments)
 
         equation.compute_global_boundaries()
-        equation.create_image_and_scale()
-        break
+
+        count += 1
+
+        
+
+        yield equation.create_image_and_scale()
 
         # equation.save()
 
     # generate_bitmaps(segments)
 
     # generate_bitmap(segments[0])
+
+if __name__ == '__main__':
+    for img, box in model_data_generator(limit=1):
+        img.save("HOLA.png")
+        for col in np.asarray(img):
+            print(col)
