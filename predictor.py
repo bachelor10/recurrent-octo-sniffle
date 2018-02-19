@@ -8,13 +8,14 @@ import os
 from machine_learning import xml_parse
 import intersect
 
-classes = os.listdir(os.getcwd() + '/machine_learning' + '/train')
+classes = [""]#os.listdir(os.getcwd() + '/machine_learning' + '/train')
 
-model_path = os.getcwd() + '/machine_learning/my_model.h5'
+model_path = os.getcwd() + '/my_model.h5'
 
 class Predictor:
     def __init__(self):
-        self.model = keras.models.load_model(model_path)
+        pass
+        #self.model = keras.models.load_model(model_path)
 
     def create_tracegroups(self, trace_pairs):
         tracegroups = []       
@@ -34,7 +35,13 @@ class Predictor:
         
         return tracegroups
 
+    def predict2(self, image):
+        return self.model.predict(image, steps=1, batch_size=None, verbose=1)
+
+
     def predict(self, traces):
+
+        print("Taces", traces)
 
         # Create tracegroups
 
