@@ -18,15 +18,16 @@ function MessageService (ws) {
     }.bind(this);
 
     ws.onmessage = function (message) {
+        console.log("Message", message)
         if(typeof this.onMessage === 'function'){
-            this.onMessage(JSON.parse(message));
+            console.log("Sending mes", message)
+            this.onMessage(message.data);
         }
     }.bind(this)
 
 }
 
 MessageService.prototype.send = function(message){
-    console.log("Sending message", message)
     if(this.isOpen){
         this.ws.send(JSON.stringify(message));
     }
@@ -143,7 +144,7 @@ Canvas.prototype.onMouseUp = function (event) {
             this.onComplete(this.DOMElement[0].toDataURL());
 
             //Clear canvas and release timeout
-            this.context.clearRect(0,0, this.context.canvas.width, this.context.canvas.height);
+            //this.context.clearRect(0,0, this.context.canvas.width, this.context.canvas.height);
             this.releaseTimeout = null;
             this.traceId = 0;
         }
@@ -210,6 +211,8 @@ $(document).ready(function () {
     var messageService = new MessageService(new WebSocket('ws://localhost:8080/ws'));
 
     messageService.onMessage = function (message) {
+        console.log("Got message", message)
+        updateBtn.removeClass('rotating');
         katex.render(message, equation[0]);
         equationRaw.text(message)
 
@@ -227,6 +230,7 @@ $(document).ready(function () {
 
     //Canvas has not been touched in 1 second
     canvas.onComplete = function (dataURL) {
+        updateBtn.addClass('rotating');
         messageService.send(
             {
                 status: 201, // http 201 Created

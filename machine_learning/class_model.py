@@ -291,7 +291,7 @@ class Expression:
         numerator = ''.join([self.segments[seg].truth for seg in frac.numerator])
         denominator = ''.join([self.segments[seg].truth for seg in frac.denominator])
 
-        return '\\frac{' + numerator + '}{' + denominator + '}\\'
+        return '\\frac{' + numerator + '}{' + denominator + '}'
 
 
     def get_latex(self):
