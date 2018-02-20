@@ -2,7 +2,7 @@ import intersect
 import math, uuid, os
 import numpy as np
 import keras
-from itertools import cycle
+from itertools import cycle, combinations
 from PIL import Image, ImageDraw
 
 
@@ -46,9 +46,9 @@ class Regular:
 
 
 class Fraction:
-    def __init__(self, numerator=None, denomirator=None):
+    def __init__(self, numerator=None, denominator=None):
         self.numerator = numerator
-        self.denomirator = denomirator
+        self.denominator = denominator
 
 
 class Power:
@@ -75,11 +75,11 @@ class Trace:
 
 
 class Segment:
-    def __init__(self, traces, id):
+    def __init__(self, traces, id, truth=''):
         self.traces = traces
         self.boundingbox = Boundingbox(traces)
         self.id = id
-        self.truth = ''
+        self.truth = truth
 
     def print_info(self):
         print("\nSegment info for", self.id)
@@ -89,6 +89,7 @@ class Segment:
         b = self.boundingbox
         print("Boundingbox (x, y, w, h):", b.mid_x, b.mid_y, b.width, b.height)
         print("max_x, min_x, max_y, min_y", b.max_x, b.min_x, b.max_y, b.min_y)
+
 
     def add_trace(trace):
         # might be useful for live feedback
@@ -173,9 +174,16 @@ class Expression:
             self.segments[id] = segment
 
 
-    def join_segments(self, segment1, segment2):
-        pass
+    def join_segments(self, id1, id2, truth=''):
+        segment1 = self.segments.pop(id1, None)
+        segment2 = self.segments.pop(id2, None)
 
+        traces = segment1.traces + segment2.traces
+        id = segment1.id
+
+        new_segment = Segment(traces, id, truth)
+        self.segments[id] = new_segment
+        
     
     def find_segments_in_area(self, max_x, min_x, max_y, min_y):
         # Searches through segments and look for middle points inside area
@@ -188,23 +196,54 @@ class Expression:
         return segments_in_area
 
 
+    def sort_id_list_x(self, ids):
+        return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.mid_x, reverse=False)]
+
+
     def is_fraction(self, id):
         coords = self.segments[id].boundingbox
         
         over = self.find_segments_in_area(coords.max_x, coords.min_x, coords.min_y, coords.min_y - 200)
         under = self.find_segments_in_area(coords.max_x, coords.min_x, coords.max_y + 200, coords.max_y) 
 
-        print('over', over)
-        print('under', under)
-
-        pass
+        return len(over) > 0 and len(under) > 0, over, under
 
 
-    def is_equalsign(self, minus1, minus2):
+    def find_fractions(self, ids):
+        new_ids = []
 
+        for minus_id in ids:
+            is_frac, over, under = self.is_fraction(minus_id)
+
+            if is_frac:
+                # Create new fraction
+                print('Found frac!')
+                over = self.sort_id_list_x(over)
+                under = self.sort_id_list_x(under)
+                self.segments[minus_id].truth = 'frac'
+                fraction = Fraction(over, under)
+                self.groups.append(fraction)
+            else:
+                new_ids.append(minus_id)
+
+        return new_ids
+
+
+    def is_equalsign(self, id1, id2):
         
+        coords1 = self.segments[id1].boundingbox
+        coords2 = self.segments[id2].boundingbox
 
-        return True
+        return np.abs(coords1.mid_x - coords2.mid_x) < 50
+
+
+    def find_equalsigns(self, ids):
+
+        for pair in combinations(ids, r=2):
+            if self.is_equalsign(pair[0], pair[1]):
+                print('Found equalsign!')
+                self.join_segments(pair[0], pair[1], truth='=')
+
 
     def classify_segments(self):
 
@@ -212,28 +251,20 @@ class Expression:
 
         for id, segment in self.segments.items():
             segment.truth = self.predictor.predict(segment.traces)
-            segment.print_info()
 
             if segment.truth == '-':
                 minus_ids.append(segment.id)
         
         # Check if minus signs is fractions
+        updated_ids = self.find_fractions(minus_ids)
 
-        for minus_id in minus_ids:
-            self.is_fraction(minus_id)
+        # Check if minus signs is equalsigns
+        if len(updated_ids) > 1:
+            self.find_equalsigns(updated_ids)
 
+        for id, segment in self.segments.items():
+            segment.print_info()
 
-
-
-        #m1 = self.segments[minus_segments[0]]
-        #m2 = self.segments[minus_segments[1]]
-        
-        #print('Equalsign:', self.is_equalsign(m1, m2))
-
-        #if minus_count > 1:
-        #    for id in minus_segments[:-1]:
-                
-         
 
     def search_horizontal(self):
         
@@ -242,6 +273,43 @@ class Expression:
 
     def create_segmentgroups(self):
         pass
+
+    
+    def sort_groups_by_x_value(self):
+        pass
+
+
+    def  get_latex_pwr(self, power):
+        pass
+
+
+    def get_latex_frac(self, frac):
+
+        print(frac.numerator)
+        print(frac.denominator)
+
+        numerator = ''.join([self.segments[seg].truth for seg in frac.numerator])
+        denominator = ''.join([self.segments[seg].truth for seg in frac.denominator])
+
+        return '\\frac{' + numerator + '}{' + denominator + '}\\'
+
+
+    def get_latex(self):
+        latex = ''
+        for group in self.groups:
+            if type(group) is Fraction:
+                latex += self.get_latex_frac(group)
+            
+            if type(group) is Power:
+                pass
+        
+        print(latex)
+        return latex
+
+    def get_truth(self):
+
+        pass
+
 
 class Predictor:
     MODEL_PATH = os.getcwd() + '/machine_learning/my_model.h5'

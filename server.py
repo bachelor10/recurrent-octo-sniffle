@@ -86,13 +86,15 @@ class WebSocket(websocket.WebSocketHandler):
                     expression = Expression()
                     expression.feed_traces(buffer_correct)
                     expression.classify_segments()
+
+                    latex = expression.get_latex()
                     
                     #print("Predicted:", prediction)
 
                     #print("Predicted", prediction[0], "as", prediction[1])
                     #self.write_message("Predicted: " + str(prediction))
                     
-                    self.write_message("Ok!")
+                    self.write_message(latex)
 
                     client.buffer = []
 
