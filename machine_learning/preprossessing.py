@@ -71,7 +71,7 @@ model.add(Dropout(0.25))
 model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
-model.add(Dense(98, activation='softmax'))
+model.add(Dense(13, activation='softmax'))
 
 print("Compiling model")
 

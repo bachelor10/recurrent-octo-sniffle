@@ -1,5 +1,6 @@
 from tornado import websocket, web, ioloop
 from predictor import Predictor
+from machine_learning.class_model import Expression
 import os, uuid, json, base64_converter
 
 class Client:
@@ -14,14 +15,9 @@ class Client:
     def to_buffer(self, msg):
         if 'traceid' in msg:
             traceid = msg['traceid']
-            if len(self.buffer) - 1 < traceid:
+ 
+            while len(self.buffer) - 1 < traceid:
                 self.buffer.append([])
-                """if 'x1' in msg and 'y1' in msg:  # Make sure to only add pairs of coordinates.
-                    self.buffer[traceid].append(int(msg['x1']))
-                    self.buffer[traceid].append(int(msg['y1']))
-                if 'x2' in msg and 'y2' in msg:
-                    self.buffer[traceid].append(int(msg['x2']))
-                    self.buffer[traceid].append(int(msg['y2']))"""
 
             if 'x1' in msg and 'y1' in msg:  # Make sure to only add pairs of coordinates.
                 self.buffer[traceid].append([int(msg['x1']), int(msg['y1'])])
@@ -31,7 +27,7 @@ class Client:
         else:
             print("Found no traceid.")
 
-    # now the buffers are filled, with each trace as a list.
+
     def to_inkml(self):
         raise NotImplementedError()
 
@@ -85,12 +81,20 @@ class WebSocket(websocket.WebSocketHandler):
                 if parsed_message['status'] == 201:  # http created = 201
                     # pass to inkml creation
                     print("Running prediction")
-                    prediction = predictor.predict(client.buffer)
+                    #prediction = predictor.predict(client.buffer)
+                    buffer_correct = [i for i in client.buffer if i != []]
+                    expression = Expression()
+                    expression.feed_traces(buffer_correct)
+                    expression.classify_segments()
 
-                    print("Predicted:", prediction)
+                    latex = expression.get_latex()
+                    
+                    #print("Predicted:", prediction)
 
                     #print("Predicted", prediction[0], "as", prediction[1])
-                    self.write_message("Predicted: " + str(prediction))
+                    #self.write_message("Predicted: " + str(prediction))
+                    
+                    self.write_message(latex)
 
                     client.buffer = []
 
