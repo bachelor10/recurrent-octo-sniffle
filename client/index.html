@@ -8,20 +8,28 @@
             integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
             crossorigin="anonymous">
     </script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0/katex.min.css" integrity="sha384-TEMocfGvRuD1rIAacqrknm5BQZ7W7uWitoih+jMNFXQIbNl16bO8OZmylH/Vi/Ei" crossorigin="anonymous">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.9.0/katex.min.js" integrity="sha384-jmxIlussZWB7qCuB+PgKG1uLjjxbVVIayPJwi6cG6Zb4YKq0JIw+OMnkkEC7kYCq" crossorigin="anonymous"></script>
 
+    <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
     <link rel="stylesheet" type="text/css" href="client/styles.css">
     <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0-beta.3/css/bootstrap.min.css">
+
 
 </head>
 <body>
     <div class="page-container">
-        <div class="sidebar-wrapper">
-            <div class="sidebar-container"> </div>
-                <h3 class="sidebar-head">Tegn ett tall!</h3>
-                <h1 id="equation" class="guess-function"></h1>
+        <div class="content-container">
+            <div class="header">
+                <p class="sidebar-head">La oss gjette et uttrykk ...</p>
+                <i id="update" class="material-icons" style="font-size:32px;">loop</i>
+            </div>
+            <canvas id="canvas" height="450" width="942"></canvas>
+            <div class="footer-container">
+                <div id="latex"></div>
+                <p id="latexRaw"></p>
             </div>
         </div>
-        <canvas id="canvas" height="600" width="1000"></canvas>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/EventEmitter/5.2.4/EventEmitter.min.js"></script>
     <script src="client/js/index.js"></script>

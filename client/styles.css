@@ -1,46 +1,73 @@
-/*body {
-    background-color: grey;
+.page-container {
     display: flex;
-    justify-content: space-around;
-    margin-top: 200px;
+    justify-content: center;
+    background-color: #F5F7F9;
 }
 
 #canvas {
     background-color: white;
-    color: black;
-}
-*/
+    color: #A0A3A6;
+    -webkit-box-shadow: 0px 0px 30px 0px rgba(50, 50, 50, 0.2);
+    -moz-box-shadow:    0px 0px 30px 0px rgba(50, 50, 50, 0.2);
+    box-shadow:         0px 0px 30px 0px rgba(50, 50, 50, 0.2);}
 
-.sidebar-wrapper {
-    width: 300px;
-    height: 100%;
-    position: absolute;
-    left: 0;
-    top: 0;
-    bottom: 0;
+
+.header {
+    display: flex;
+    justify-content: space-between;
+    height: 100px;
+    align-items: center;
 }
-.sidebar-container {
-    margin-top: 100px;
+.footer-container {
     display: flex;
     justify-content: center;
-
+    align-items: center;
+    flex-direction: column;
 }
-.page-container {
+#update {
+    cursor: pointer;
 }
-.guess-function {
-    margin-top: 100px;
-    text-align: center;
+#latex {
+    margin: 20px 0;
 }
+.katex { font-size: 2.1em; }
 
 .sidebar-head {
-    height: 100px;
-    text-align: center;
-
+    margin-top: 10px;
 }
-#canvas {
-    background-color: grey;
-    color: white;
-        margin-left: 300px;
-    margin-top: 100px;
 
+@-webkit-keyframes rotating /* Safari and Chrome */ {
+  to {
+    -webkit-transform: rotate(0deg);
+    -o-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  from {
+    -webkit-transform: rotate(360deg);
+    -o-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+@keyframes rotating {
+  to {
+    -ms-transform: rotate(0deg);
+    -moz-transform: rotate(0deg);
+    -webkit-transform: rotate(0deg);
+    -o-transform: rotate(0deg);
+    transform: rotate(0deg);
+  }
+  from {
+    -ms-transform: rotate(360deg);
+    -moz-transform: rotate(360deg);
+    -webkit-transform: rotate(360deg);
+    -o-transform: rotate(360deg);
+    transform: rotate(360deg);
+  }
+}
+.rotating {
+  -webkit-animation: rotating 2s linear infinite;
+  -moz-animation: rotating 2s linear infinite;
+  -ms-animation: rotating 2s linear infinite;
+  -o-animation: rotating 2s linear infinite;
+  animation: rotating 2s linear infinite;
 }
