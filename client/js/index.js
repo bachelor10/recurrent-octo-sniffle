@@ -18,7 +18,6 @@ function MessageService (ws) {
     }.bind(this);
 
     ws.onmessage = function (message) {
-        alert(message.data);
         if(typeof this.onMessage === 'function'){
             this.onMessage(JSON.parse(message));
         }
@@ -72,6 +71,7 @@ function Canvas(DOMElement) {
 
 Canvas.prototype.drawLine = function (x1, y1, x2, y2) {
     this.context.lineWidth=5;
+    this.context.strokeStyle="#A0A3A6";
     this.context.beginPath();
     this.context.moveTo(x1, y1);
     this.context.lineTo(x2,y2);
@@ -191,13 +191,29 @@ $(document).ready(function () {
 
     //Get canvas and prepare
 
+    //Fill page screen
+    var pageContainer = $(".page-container");
+    pageContainer.css('height', window.innerHeight)
+
     var canvas = new Canvas($("#canvas"));
 
-    var equation = $("#equation");
-    console.log("EQ1", equation);
-    console.log("EQ2", equation[0]);
+    var equation = $("#latex");
+    var equationRaw = $("#latexRaw");
+
+    var updateBtn = $("#update");
+
+    updateBtn.click(function (e) {
+        location.reload()
+    });
+
 
     var messageService = new MessageService(new WebSocket('ws://localhost:8080/ws'));
+
+    messageService.onMessage = function (message) {
+        katex.render(message, equation[0]);
+        equationRaw.text(message)
+
+    }
 
     canvas.onDraw = function (x1, y1, x2, y2) {
         messageService.send(
@@ -208,23 +224,9 @@ $(document).ready(function () {
             })
     };
 
-    // sends an end to the server, this consists of an msg and an id. id represents trace id in trace group
-    // TODO Delete this ( ? ) (this method shouldnt be needed anymore, validate.)
-    /*canvas.onCompleteBuffer = function () {
-        messageService.send(
-            {
-                status: 201, // http 201 Created
-                : this.traceId,
-                uuid: uuid
-            }
-        )
-    };*/
-
-
 
     //Canvas has not been touched in 1 second
     canvas.onComplete = function (dataURL) {
-        equation.text("");
         messageService.send(
             {
                 status: 201, // http 201 Created
@@ -238,8 +240,6 @@ $(document).ready(function () {
                 return handleError(error)
             }
 
-            equation.text(result.equation);
-
         });
     };
 
@@ -251,7 +251,6 @@ $(document).ready(function () {
         console.log("Equation", result.equation);
         console.log("UUID", result.uuid);
 
-        equation.text(result.equation);
         uuid = result.uuid;
 
     })
