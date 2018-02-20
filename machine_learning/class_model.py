@@ -110,31 +110,32 @@ class Expression:
         
 
     def create_tracegroups(self, traces, trace_pairs):
-        tracegroups = []       
-        
-        if len(trace_pairs) > 0:
-            tracegroups.append(set(list(trace_pairs)[0]))
-
-            for i, pair in enumerate(trace_pairs):
-                
-                for s in tracegroups:
-                    if pair[0] in s:
-                        s.add(pair[1])
-                        break
-                    else:
-                        new_set = set()
-                        new_set.add(pair[0])
-                        new_set.add(pair[1])
-                        tracegroups.append(new_set)
+        tracegroups = []
         
         for i, trace in enumerate(traces):
-            found = False
-            for group in tracegroups:
-                if i in group:
-                    found = True
-            if not found:
-                tracegroups.append(set([i]))
-        
+
+            flag = False
+            for j, group in enumerate(tracegroups):
+
+                common = []
+                for p in trace_pairs:
+                    if i in p:
+                        common = common + list(p)
+                common = list(set(common))
+
+                if len(set(common).intersection(group)) > 0:
+                     tracegroups[j] = list(set(common + group))
+                     flag = True
+
+            if not flag:
+                new_group = [i]
+                for pair in trace_pairs:
+                    if i in pair:
+                        new_group = new_group + list(pair)
+                
+                new_group = list(set(new_group))
+                tracegroups.append(new_group)
+            
         sorted_tracegroups = sorted(tracegroups, key=lambda m:next(iter(m)))
 
         return sorted_tracegroups
@@ -158,7 +159,8 @@ class Expression:
 
 
     def feed_traces(self, traces):
-        overlap_pairs = self.find_overlap_pairs(traces)  
+        overlap_pairs = self.find_overlap_pairs(traces)
+        print('overlap_pairs', overlap_pairs)
         tracegroups = self.create_tracegroups(traces, overlap_pairs)
         self.create_segments(traces, tracegroups)
 
@@ -167,12 +169,13 @@ class Expression:
 
 
     def create_segments(self, traces, tracegroups):
+        print('tracegroups', tracegroups)
         for i, group in enumerate(tracegroups):
             traces_for_segment = [traces[j] for j in list(group)]
             id = str(i)
             segment = Segment(traces_for_segment, id)
             self.segments[id] = segment
-
+        print('Amount after create_segments:', len(self.segments))
 
     def join_segments(self, id1, id2, truth=''):
         segment1 = self.segments.pop(id1, None)
@@ -264,6 +267,9 @@ class Expression:
 
         for id, segment in self.segments.items():
             segment.print_info()
+        print('Amount of segments:', len(self.segments))
+
+        
 
 
     def search_horizontal(self):
@@ -313,7 +319,9 @@ class Expression:
 
 class Predictor:
     MODEL_PATH = os.getcwd() + '/machine_learning/my_model.h5'
-    CLASSES = os.listdir(os.getcwd() + '/machine_learning' + '/train')
+    CLASSES = os.listdir(os.getcwd() + '/machine_learning' + '/train')    
+    #MODEL_PATH = os.getcwd() + '/my_model.h5'
+    #CLASSES = os.listdir(os.getcwd() + '/train')
 
     def __init__(self):
         self.model = keras.models.load_model(Predictor.MODEL_PATH)
@@ -428,4 +436,13 @@ class Predictor:
         return np.asarray([np.asarray(formatted).reshape((26, 26, 1))])
 
 if __name__ == '__main__':
-    pass
+
+    traces = [0,1,2,3,4,5,6,7]
+    overlap = [(1,2),(2,3),(4,5),(0,7)]
+
+    exp = Expression()
+
+    b = exp.create_tracegroups(traces, overlap)
+
+    print(b)
+    
