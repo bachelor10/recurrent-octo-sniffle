@@ -214,7 +214,7 @@ $(document).ready(function () {
         messageService.send(
             {
                 status: 201, // http 201 Created
-                traceid: this.traceId,
+                : this.traceId,
                 uuid: uuid
             }
         )
@@ -228,7 +228,6 @@ $(document).ready(function () {
         messageService.send(
             {
                 status: 201, // http 201 Created
-                traceid: this.traceId,
                 uuid: uuid
             }
         );

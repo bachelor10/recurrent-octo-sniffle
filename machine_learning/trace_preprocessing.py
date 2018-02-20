@@ -276,7 +276,7 @@ def get_training_pairs():
     return training_arr, validation_arr
 
 def scale_trace(trace):
-
+    print(trace)
 
 
 def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0, printt=False):  # , maximum=None, minimum=None):
@@ -380,11 +380,29 @@ def draw_scenario(trace1, trace2, fn):
 
     image.save(filename)
 
+
+
+def semi_parallell(A,B): # A and B are traces
+    a_1 = (A[-1][1] - A[0][1]) / (A[-1][0] - A[0][0])
+    a_2 = (B[-1][1] - B[0][1]) / (B[-1][0] - B[0][0])
+
+    print("a_1: ", a_1)
+    print("a_2: ", a_2)
+    print(a_1 - a_2)
+
+    if np.abs(a_1 - a_2) < 0.1:
+        return True
+    return False
+
+
+
 if __name__ == '__main__':
 
-    t, v = get_training_pairs()
+    #t, v = get_training_pairs()
+    
 
     
+
         
     '''     for file in os.listdir(os.getcwd() + '/data'):
         full_filename = os.getcwd() + '/data/' + file
