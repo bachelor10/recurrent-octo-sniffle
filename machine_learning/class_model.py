@@ -39,14 +39,22 @@ class Boundingbox:
         self.min_y = min_y
         self.width = max_x - min_x
         self.height = max_y - min_y
-    
-class Regular:
-    def __init__(self, segmentgroup=None):
-        self.segmentgroup = segmentgroup
 
 
-class Fraction:
-    def __init__(self, numerator=None, denominator=None):
+class Group:
+    def __init__(self, mid_x):
+        self.mid_x = mid_x
+
+
+class Regular(Group):
+    def __init__(self, id, mid_x):
+        Group.__init__(self, mid_x)
+        self.id = id
+
+
+class Fraction(Group):
+    def __init__(self, numerator, denominator, mid_x):
+        Group.__init__(self, mid_x)
         self.numerator = numerator
         self.denominator = denominator
 
@@ -58,6 +66,7 @@ class Power:
 
     def is_power(base, exponent):
         pass
+
 
 class Trace:
     def __init__(self, points):
@@ -101,12 +110,12 @@ class Segmentgroup:
         self.segments = segments
 
     
-
 class Expression:
     def __init__(self):
         self.groups = []
         self.segments = dict()
         self.predictor = Predictor()
+        self.processed = []
         
 
     def create_tracegroups(self, traces, trace_pairs):
@@ -203,6 +212,10 @@ class Expression:
         return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.mid_x, reverse=False)]
 
 
+    def sort_groups(self):
+        self.groups.sort(key=lambda group: group.mid_x, reverse=False)
+
+
     def is_fraction(self, id):
         coords = self.segments[id].boundingbox
         
@@ -224,8 +237,16 @@ class Expression:
                 over = self.sort_id_list_x(over)
                 under = self.sort_id_list_x(under)
                 self.segments[minus_id].truth = 'frac'
-                fraction = Fraction(over, under)
+
+                mid_x = self.segments[minus_id].boundingbox.mid_x
+
+                fraction = Fraction(over, under, mid_x)
                 self.groups.append(fraction)
+
+                # Set minus_id, over and under to processed
+                self.processed.append(minus_id);
+                self.processed = self.processed + over + under
+
             else:
                 new_ids.append(minus_id)
 
@@ -265,11 +286,23 @@ class Expression:
         if len(updated_ids) > 1:
             self.find_equalsigns(updated_ids)
 
-        for id, segment in self.segments.items():
-            segment.print_info()
+        #for id, segment in self.segments.items():
+        #    segment.print_info()
         print('Amount of segments:', len(self.segments))
 
+
+        print('Remaining segments:', len(self.segments.items()) - len(self.processed))
+        for id, segment in self.segments.items():
+            if id not in self.processed:
+                self.segments[id].print_info()
+
+                mid_x = self.segments[id].boundingbox.mid_x
+
+                self.groups.append(Regular(id, mid_x))
+                self.processed.append(id)
         
+        # Sort groups
+        self.sort_groups()
 
 
     def search_horizontal(self):
@@ -278,10 +311,6 @@ class Expression:
 
 
     def create_segmentgroups(self):
-        pass
-
-    
-    def sort_groups_by_x_value(self):
         pass
 
 
@@ -305,9 +334,8 @@ class Expression:
         for group in self.groups:
             if type(group) is Fraction:
                 latex += self.get_latex_frac(group)
-            
-            if type(group) is Power:
-                pass
+            elif type(group) is Regular:
+                latex += self.segments[group.id].truth
         
         print(latex)
         return latex
