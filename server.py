@@ -1,8 +1,7 @@
 from tornado import websocket, web, ioloop
-from predictor import Predictor
-from machine_learning.class_model import Expression
+from machine_learning.class_model import Expression, Predictor
 import os, uuid, json, base64_converter
-
+from time import time
 class Client:
     def __init__(self, uuid, current_equation):
         self.buffer = []  # this is going to be a list of lists, but it's initialized in to_buffer method
@@ -81,24 +80,34 @@ class WebSocket(websocket.WebSocketHandler):
                 if parsed_message['status'] == 201:  # http created = 201
                     # pass to inkml creation
                     print("Running prediction")
+                    start = time()
                     #prediction = predictor.predict(client.buffer)
                     buffer_correct = [i for i in client.buffer if i != []]
-                    expression = Expression()
+                    print("Buffer correct", str(time() - start) + "s")
+                    startExpression = time()
+                    expression = Expression(predictor)
+                    print("Expression relative", str(time() - startExpression) + "s")
+                    print("Expression", str(time() - start) + "s")
+                    startFeed = time()
                     expression.feed_traces(buffer_correct)
+                    print("Feed traces", str(time() - start) + "s")
+                    classifyTime = time()
                     expression.classify_segments()
+                    print("Classify segm", str(time() - start) + "s")
 
                     latex = expression.get_latex()
-                    
+                    print("Get latex", str(time() - start) + "s")
+
                     #print("Predicted:", prediction)
 
                     #print("Predicted", prediction[0], "as", prediction[1])
                     #self.write_message("Predicted: " + str(prediction))
-                    
+                    print("Total duration", str(time() - start) + "ms")
                     self.write_message(latex)
 
-                    client.buffer = []
 
-            # elif 'status' in parsed_message:
+                    #client.buffer = []
+
             else:
                 client.to_buffer(parsed_message)
 

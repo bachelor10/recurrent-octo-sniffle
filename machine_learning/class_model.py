@@ -5,7 +5,7 @@ import keras
 from itertools import cycle, combinations
 from PIL import Image, ImageDraw
 
-
+from time import time
 
 class Boundingbox:
     def __init__(self, traces):
@@ -111,12 +111,13 @@ class Segmentgroup:
 
     
 class Expression:
-    def __init__(self):
+    def __init__(self, predictor):
+        start = time()
         self.groups = []
         self.segments = dict()
-        self.predictor = Predictor()
+        self.predictor = predictor
         self.processed = []
-        
+        print("Created expression", str(time() - start) + "s")
 
     def create_tracegroups(self, traces, trace_pairs):
         tracegroups = []
@@ -168,23 +169,22 @@ class Expression:
 
 
     def feed_traces(self, traces):
+        start = time()
         overlap_pairs = self.find_overlap_pairs(traces)
-        print('overlap_pairs', overlap_pairs)
         tracegroups = self.create_tracegroups(traces, overlap_pairs)
         self.create_segments(traces, tracegroups)
+        print("Feed traces time", str(time() - start) + "ms")
 
         #for id, segment in self.segments.items():
         #    segment.print_info()
 
 
     def create_segments(self, traces, tracegroups):
-        print('tracegroups', tracegroups)
         for i, group in enumerate(tracegroups):
             traces_for_segment = [traces[j] for j in list(group)]
             id = str(i)
             segment = Segment(traces_for_segment, id)
             self.segments[id] = segment
-        print('Amount after create_segments:', len(self.segments))
 
     def join_segments(self, id1, id2, truth=''):
         segment1 = self.segments.pop(id1, None)
@@ -233,7 +233,6 @@ class Expression:
 
             if is_frac:
                 # Create new fraction
-                print('Found frac!')
                 over = self.sort_id_list_x(over)
                 under = self.sort_id_list_x(under)
                 self.segments[minus_id].truth = 'frac'
@@ -265,14 +264,12 @@ class Expression:
 
         for pair in combinations(ids, r=2):
             if self.is_equalsign(pair[0], pair[1]):
-                print('Found equalsign!')
                 self.join_segments(pair[0], pair[1], truth='=')
 
 
     def classify_segments(self):
 
         minus_ids = []
-
         for id, segment in self.segments.items():
             segment.truth = self.predictor.predict(segment.traces)
 
@@ -280,6 +277,7 @@ class Expression:
                 minus_ids.append(segment.id)
         
         # Check if minus signs is fractions
+        start = time()
         updated_ids = self.find_fractions(minus_ids)
 
         # Check if minus signs is equalsigns
@@ -288,13 +286,8 @@ class Expression:
 
         #for id, segment in self.segments.items():
         #    segment.print_info()
-        print('Amount of segments:', len(self.segments))
-
-
-        print('Remaining segments:', len(self.segments.items()) - len(self.processed))
         for id, segment in self.segments.items():
             if id not in self.processed:
-                self.segments[id].print_info()
 
                 mid_x = self.segments[id].boundingbox.mid_x
 
@@ -303,6 +296,8 @@ class Expression:
         
         # Sort groups
         self.sort_groups()
+        print("Post processing", str(time() - start) + "ms")
+
 
 
     def search_horizontal(self):
@@ -355,8 +350,12 @@ class Predictor:
         self.model = keras.models.load_model(Predictor.MODEL_PATH)
 
     def predict(self, segment_traces):
+        start = time()
         processed = self.pre_process(segment_traces)
-        output = self.model.predict(processed, steps=1, batch_size=None, verbose=1)
+        print("Preprocess time", str(time() - start) + "ms")
+        start = time()
+        output = self.model.predict(processed)
+        print("Predict Time", str(time() - start) + "ms")
         
         best_pred = (0, 0)
         

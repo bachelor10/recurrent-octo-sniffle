@@ -138,8 +138,12 @@ Canvas.prototype.onMouseUp = function (event) {
     // increment traceid
     this.traceId++;
 
+    console.log("On mouse up!");
+    this.onComplete(this.DOMElement[0].toDataURL());
+
 
     this.releaseTimeout = setTimeout(function () {
+        /*
         if(this.isMouseDown === false){
             this.onComplete(this.DOMElement[0].toDataURL());
 
@@ -147,7 +151,7 @@ Canvas.prototype.onMouseUp = function (event) {
             //this.context.clearRect(0,0, this.context.canvas.width, this.context.canvas.height);
             this.releaseTimeout = null;
             this.traceId = 0;
-        }
+        }*/
     }.bind(this), 2000)
 };
 
@@ -206,17 +210,21 @@ $(document).ready(function () {
     updateBtn.click(function (e) {
         location.reload()
     });
+    var awaitingMessages = 0;
 
 
     var messageService = new MessageService(new WebSocket('ws://localhost:8080/ws'));
 
     messageService.onMessage = function (message) {
-        console.log("Got message", message)
-        updateBtn.removeClass('rotating');
+        console.log("Got message", message);
+        awaitingMessages -= 1;
+        if(awaitingMessages === 0){
+            updateBtn.removeClass('rotating');
+        }
         katex.render(message, equation[0]);
         equationRaw.text(message)
 
-    }
+    };
 
     canvas.onDraw = function (x1, y1, x2, y2) {
         messageService.send(
@@ -231,6 +239,7 @@ $(document).ready(function () {
     //Canvas has not been touched in 1 second
     canvas.onComplete = function (dataURL) {
         updateBtn.addClass('rotating');
+        awaitingMessages += 1;
         messageService.send(
             {
                 status: 201, // http 201 Created
