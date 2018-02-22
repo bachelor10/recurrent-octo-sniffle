@@ -63,19 +63,34 @@ def parse_single_segment(segment): # segment object
 		
 	
 	
-	lower_x = np.min(np_ink[:, 0:2], axis=0)
-	lower_y = np.min(np_ink[:, 0:2], axis=0)
-	upper_x = np.max(np_ink[:, 0:2], axis=0)
-	upper_y = np.max(np_ink[:, 0:2], axis=0)
+	lower = np.min(np_ink[:, 0:2], axis=0)
+	upper = np.max(np_ink[:, 0:2], axis=0)
 	
-	plot_trace(np_ink)
+	# plot_trace(np_ink)
 	
-	relation_between = upper_x - lower_x
+	relation_between = upper - lower
 	relation_between[relation_between == 0] = 1
-	np_ink[:, 0:2] = (np_ink[:, 0:2] - lower_x) / relation_between
+	np_ink[:, 0:2] = (np_ink[:, 0:2] - lower) / relation_between
 	np_ink = np_ink[1:, 0:2] - np_ink[0:-1, 0:2]
 	#print (np_ink)
+	np_ink = np_ink[1:, :]
+	print(np_ink)
 	return np_ink, truth
+	
+def seg_to_npz():
+	print("Trying to write segments to file.")
+	for i, t in enumerate(segm):
+		print(t.truth)
+		if True:
+			parse_single_segment(t)
+	# send to handler here
+	# need to have shape somehow ?
+	# 1. read
+	# 2. format and scale
+	# 3. write to correct file
+	# 4. test writing and reading from file
+	# 5. ready for training
+	
 	
 
 if __name__ == '__main__':
