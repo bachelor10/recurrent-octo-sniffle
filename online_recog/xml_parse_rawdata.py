@@ -11,13 +11,13 @@ from rdp import rdp, rdp_iter  # https://pypi.python.org/pypi/rdp
 
 from machine_learning.xml_parse import format_trace, find_segments
 
+
 class SeqParser:
 	def __init__(self):
 		print("s")
-	
 
 
-def plot_trace(trace): # trace is x,y coordinates
+def plot_trace(trace):  # trace is x,y coordinates
 	plt.plot(trace[:, 0], trace[:, 1])
 	axes = plt.gca()
 	axes.set_xlim([np.min(trace[:, 0]) - 1.0, np.max(trace[:, 0]) + 1.0])
@@ -26,13 +26,14 @@ def plot_trace(trace): # trace is x,y coordinates
 	
 	plt.show()
 
+
 def plot_sequential(trace):
 	raise NotImplementedError()
-	
+
 
 def consecutive_segments(segm):
-	#print("SEGM", segm)
-	#print(type(segm))
+	# print("SEGM", segm)
+	# print(type(segm))
 	for i, t in enumerate(segm):
 		print(t.truth)
 		if True:
@@ -45,9 +46,10 @@ def find_tracelength(trace):
 		lengths.append(len(t))
 	return lengths
 
+
 # this method is meant to parse a segment, sequentially return data and truth
 # https://www.tensorflow.org/versions/master/tutorials/recurrent_quickdraw
-def parse_single_segment(segment): # segment object
+def parse_single_segment(segment):  # segment object
 	truth = segment.truth
 	traces = segment.traces
 	stroke_lengths = find_tracelength(traces)
@@ -59,9 +61,7 @@ def parse_single_segment(segment): # segment object
 		trace = np.array(trace).astype(np.float32)
 		np_ink[it:(it + len(trace)), 0:2] = trace
 		it += len(trace)
-		np_ink[it - 1, 2] = 1 # stroke end
-		
-	
+		np_ink[it - 1, 2] = 1  # stroke end
 	
 	lower = np.min(np_ink[:, 0:2], axis=0)
 	upper = np.max(np_ink[:, 0:2], axis=0)
@@ -72,31 +72,51 @@ def parse_single_segment(segment): # segment object
 	relation_between[relation_between == 0] = 1
 	np_ink[:, 0:2] = (np_ink[:, 0:2] - lower) / relation_between
 	np_ink = np_ink[1:, 0:2] - np_ink[0:-1, 0:2]
-	#print (np_ink)
+	# print (np_ink)
 	np_ink = np_ink[1:, :]
 	print(np_ink)
 	return np_ink, truth
-	
-def seg_to_npz():
+
+
+def get_inkml_root(file):
+	return ET.parse(file).getroot()
+
+
+def seg_to_npz(directory = None, file=None):
 	print("Trying to write segments to file.")
+	# for files in directory
+	# parse inkml
+	# find segments
+	# for each file, we get an array of segments.
+	'''
+	
+	'''
+	if not(file is None):
+		root = get_inkml_root(file)
+		segm = find_segments(root)
+	else:
+		return None
+	
+	
 	for i, t in enumerate(segm):
 		print(t.truth)
 		if True:
 			parse_single_segment(t)
-	# send to handler here
-	# need to have shape somehow ?
-	# 1. read
-	# 2. format and scale
-	# 3. write to correct file
-	# 4. test writing and reading from file
-	# 5. ready for training
-	
-	
+
+
+# send to handler here
+# need to have shape somehow ?
+# 1. read
+# 2. format and scale
+# 3. write to correct file
+# 4. test writing and reading from file
+# 5. ready for training
+
 
 if __name__ == '__main__':
-	tree = ET.parse('01.inkml')
-	root = tree.getroot()
-	segments = find_segments(root) # gets a list of Segment objects
-
+	root = get_inkml_root('01.inkml')
+	segments = find_segments(root)  # gets a list of Segment objects
+	
 	# print(segments)
-	consecutive_segments(segments)
+	#consecutive_segments(segments)
+	seg_to_npz(file='01.inkml')
