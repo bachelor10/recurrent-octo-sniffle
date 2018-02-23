@@ -106,4 +106,5 @@ ENV/
 /machine_learning/data/
 /machine_learning/validation/
 /machine_learning/train/
+/machine_learning/preview/
 .vscode/settings.json

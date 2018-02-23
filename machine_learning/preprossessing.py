@@ -1,8 +1,9 @@
 from PIL import Image
 import keras
 from keras.models import Sequential
-from keras.layers import Dense, Dropout, Flatten
-from keras.layers import Conv2D, MaxPooling2D
+from keras.layers import Conv2D, MaxPooling2D, BatchNormalization, Activation, Dense, Flatten, Dropout
+from io import BytesIO
+from matplotlib import pyplot as plt
 """
 
 
@@ -16,26 +17,42 @@ def generate_dataset():
     print("Generating dataset")
     train_generator = ImageDataGenerator(
         rescale = 1./255,
-        rotation_range = 0.20
+        rotation_range = 8,
+        width_shift_range=0.08, 
+        shear_range=0.3,
+        height_shift_range=0.08, 
+        zoom_range=0.08
     )
     print("Generating validation")
 
     validation_generator = ImageDataGenerator(
         rescale = 1./255,
-        rotation_range=0.20
+        rotation_range = 8,
+        width_shift_range=0.08, 
+        shear_range=0.3,
+        height_shift_range=0.08, 
+        zoom_range=0.08
     )
     print("Getting train data")
 
     train_generator = train_generator.flow_from_directory(
         'train',
-        target_size=(26, 26),
+        target_size=(45,45),
         batch_size=64,
         color_mode='grayscale',
         class_mode='categorical',
     )
-    for image in train_generator:
-        print(image)
-        break
+
+    """count = 0
+
+    for image, y in train_generator:
+        print("Shape", image[0].shape)
+        img = (image[0] * 255)
+        img = Image.fromarray(img.astype('uint8'))
+        img.save('preview/' + str(count) + ".png")
+        if count > 100: break
+        count += 1"""
+ 
     print("Getting validation data")
 
     """img = load_img('data/train/cats/cat.0.jpg')  # this is a PIL image
@@ -43,7 +60,7 @@ def generate_dataset():
     x = x.reshape((1,) + x.shape)  # this is a Numpy array with shape (1, 3, 150, 150)
 
     # the .flow() command below generates batches of randomly transformed images
-    # and saves the results to the `preview/` directory
+    # and saves the results to the `pre view/` directory
     i = 0
     """
 
@@ -52,7 +69,7 @@ def generate_dataset():
         target_size=(26, 26),
         batch_size=64,
         color_mode='grayscale',
-        class_mode='categorical')
+        class_mode='categorical',)
 
     return train_generator, validation_generator
 
@@ -60,7 +77,7 @@ def generate_dataset():
 train_generator, validation_generator = generate_dataset()
 
 print("Creating model")
-
+"""
 model = Sequential()
 model.add(Conv2D(32, kernel_size=(3, 3),
                  activation='relu',
@@ -72,7 +89,34 @@ model.add(Flatten())
 model.add(Dense(128, activation='relu'))
 model.add(Dropout(0.5))
 model.add(Dense(13, activation='softmax'))
+"""
+model = Sequential()
+model.add(Conv2D(32, (3, 3), input_shape=(45,45,1)))
+model.add(BatchNormalization(axis=-1))
+model.add(Activation('relu'))
+model.add(Conv2D(32, (3, 3)))
+model.add(BatchNormalization(axis=-1))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2,2)))
 
+model.add(Conv2D(64,(3, 3)))
+model.add(BatchNormalization(axis=-1))
+model.add(Activation('relu'))
+model.add(Conv2D(64, (3, 3)))
+model.add(BatchNormalization(axis=-1))
+model.add(Activation('relu'))
+model.add(MaxPooling2D(pool_size=(2,2)))
+
+model.add(Flatten())
+
+# Fully connected layer
+model.add(Dense(512))
+model.add(BatchNormalization())
+model.add(Activation('relu'))
+model.add(Dropout(0.2))
+model.add(Dense(39))
+
+model.add(Activation('softmax'))
 print("Compiling model")
 
 model.compile(loss=keras.losses.categorical_crossentropy,
@@ -82,7 +126,6 @@ print("Fitting model")
 
 model.fit_generator(
         train_generator,
-        steps_per_epoch=(44253 / 64),
         epochs=3,
         validation_data=validation_generator,
         validation_steps=(10995 / 64),
