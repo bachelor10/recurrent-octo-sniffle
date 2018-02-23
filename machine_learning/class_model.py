@@ -197,13 +197,14 @@ class Expression:
         self.segments[id] = new_segment
         
     
-    def find_segments_in_area(self, max_x, min_x, max_y, min_y):
+    def find_segments_in_area(self, max_x, min_x, max_y, min_y, ignore=[]):
         # Searches through segments and look for middle points inside area
         segments_in_area = []
 
         for id, segment in self.segments.items():
             if min_x <= segment.boundingbox.mid_x <= max_x and min_y <= segment.boundingbox.mid_y <= max_y:
-                segments_in_area.append(segment.id)
+                if segment.id not in ignore:
+                    segments_in_area.append(segment.id)
 
         return segments_in_area
 
@@ -218,10 +219,11 @@ class Expression:
 
     def is_fraction(self, id):
         coords = self.segments[id].boundingbox
-        
-        over = self.find_segments_in_area(coords.max_x, coords.min_x, coords.min_y, coords.min_y - 200)
-        under = self.find_segments_in_area(coords.max_x, coords.min_x, coords.max_y + 200, coords.max_y) 
+        ignore = [id]
+        over = self.find_segments_in_area(coords.max_x, coords.min_x, coords.min_y, coords.min_y - 200, ignore)
+        under = self.find_segments_in_area(coords.max_x, coords.min_x, coords.max_y + 200, coords.max_y, ignore)
 
+        print("Found fractions", len(over), len(under))
         return len(over) > 0 and len(under) > 0, over, under
 
 
@@ -243,7 +245,7 @@ class Expression:
                 self.groups.append(fraction)
 
                 # Set minus_id, over and under to processed
-                self.processed.append(minus_id);
+                self.processed.append(minus_id)
                 self.processed = self.processed + over + under
 
             else:
@@ -262,9 +264,16 @@ class Expression:
 
     def find_equalsigns(self, ids):
 
-        for pair in combinations(ids, r=2):
-            if self.is_equalsign(pair[0], pair[1]):
-                self.join_segments(pair[0], pair[1], truth='=')
+        still_equalsigns = True
+        while still_equalsigns:
+            for pair in combinations(ids, r=2):
+                if self.is_equalsign(pair[0], pair[1]):
+                    self.join_segments(pair[0], pair[1], truth='=')
+                    del ids[ids.index(pair[0])]
+                    del ids[ids.index(pair[1])]
+                    break
+            else:
+                still_equalsigns = False
 
 
     def classify_segments(self):
@@ -342,7 +351,7 @@ class Expression:
 
 class Predictor:
     MODEL_PATH = os.getcwd() + '/machine_learning/my_model.h5'
-    CLASSES = os.listdir(os.getcwd() + '/machine_learning' + '/train')    
+    CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
     #CLASSES = os.listdir(os.getcwd() + '/train')
 
