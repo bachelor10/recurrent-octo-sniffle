@@ -1,3 +1,8 @@
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
+
 import xml.etree.ElementTree as ET
 import uuid, math, time
 import numpy as np
@@ -8,6 +13,7 @@ import os
 import matplotlib.pyplot as plt
 import matplotlib.quiver as quiv
 from rdp import rdp, rdp_iter  # https://pypi.python.org/pypi/rdp
+import tensorflow as tf
 
 from machine_learning.xml_parse import format_trace, find_segments
 
@@ -74,7 +80,7 @@ def parse_single_segment(segment):  # segment object
 	np_ink = np_ink[1:, 0:2] - np_ink[0:-1, 0:2]
 	# print (np_ink)
 	np_ink = np_ink[1:, :]
-	print(np_ink)
+	# print(np_ink)
 	return np_ink, truth
 
 
@@ -82,8 +88,10 @@ def get_inkml_root(file):
 	return ET.parse(file).getroot()
 
 
-def seg_to_npz(directory = None, file=None):
+def seg_to_npz(directory=None, file=None):
 	print("Trying to write segments to file.")
+	writer = tf.python_io.TFRecordWriter('test.tfrecords')
+	truths = []
 	# for files in directory
 	# parse inkml
 	# find segments
@@ -91,17 +99,30 @@ def seg_to_npz(directory = None, file=None):
 	'''
 	
 	'''
-	if not(file is None):
+	if not (file is None):
 		root = get_inkml_root(file)
 		segm = find_segments(root)
 	else:
 		return None
 	
-	
+	'''
+		t here are segment objects.
+	'''
 	for i, t in enumerate(segm):
-		print(t.truth)
-		if True:
-			parse_single_segment(t)
+		# print(t.truth)
+		if i < 1:
+			tf_ex, truth = parse_single_segment(t)
+			print(truth)
+			print("Shape: ", tf_ex.shape)
+			if truth not in truths:
+				truths.append(truth)
+			ftore = tf.train.Example(features=tf.train.Features(feature={
+				'ink': tf.train.Feature(float_list=tf.train.FloatList(value=tf_ex.flatten())),
+				'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=tf_ex.shape))
+			}))
+			writer.write(ftore.SerializeToString())
+	
+	writer.close()
 
 
 # send to handler here
@@ -118,5 +139,5 @@ if __name__ == '__main__':
 	segments = find_segments(root)  # gets a list of Segment objects
 	
 	# print(segments)
-	#consecutive_segments(segments)
+	# consecutive_segments(segments)
 	seg_to_npz(file='01.inkml')
