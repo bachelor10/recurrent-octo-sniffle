@@ -14,6 +14,7 @@ import matplotlib.pyplot as plt
 import matplotlib.quiver as quiv
 from rdp import rdp, rdp_iter  # https://pypi.python.org/pypi/rdp
 import tensorflow as tf
+import h5py
 
 from machine_learning.xml_parse import format_trace, find_segments
 
@@ -88,16 +89,42 @@ def get_inkml_root(file):
 	return ET.parse(file).getroot()
 
 
-def seg_to_npz(directory=None, file=None):
+def seg_to_tfexample(directory=None, file=None):
 	print("Trying to write segments to file.")
 	writer = tf.python_io.TFRecordWriter('test.tfrecords')
+	truths = []
+	if not (file is None):
+		root = get_inkml_root(file)
+		segm = find_segments(root)
+	else:
+		return None
+	
+	for i, t in enumerate(segm):
+		if i < 1:
+			tf_ex, truth = parse_single_segment(t)
+			print(truth)
+			print("Shape: ", tf_ex.shape)
+			if truth not in truths:
+				truths.append(truth)
+			ftore = tf.train.Example(features=tf.train.Features(feature={
+				'truth_index': tf.train.Feature(int64_list=tf.train.Int64List(value=[truths.index(truth)])),
+				'ink': tf.train.Feature(float_list=tf.train.FloatList(value=tf_ex.flatten())),
+				'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=tf_ex.shape))
+			}))
+			writer.write(ftore.SerializeToString())
+	writer.close()
+
+
+def seg_to_npr(directory=None, file=None):
+	print("Trying to write segments to file.")
+	
 	truths = []
 	# for files in directory
 	# parse inkml
 	# find segments
 	# for each file, we get an array of segments.
 	'''
-	
+
 	'''
 	if not (file is None):
 		root = get_inkml_root(file)
@@ -116,13 +143,10 @@ def seg_to_npz(directory=None, file=None):
 			print("Shape: ", tf_ex.shape)
 			if truth not in truths:
 				truths.append(truth)
-			ftore = tf.train.Example(features=tf.train.Features(feature={
-				'ink': tf.train.Feature(float_list=tf.train.FloatList(value=tf_ex.flatten())),
-				'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=tf_ex.shape))
-			}))
-			writer.write(ftore.SerializeToString())
-	
-	writer.close()
+			# TODO downsample data (?)
+			hf = h5py.File(name='hest.h5', mode='w')
+			hf.create_dataset('data_1', data=tf_ex)
+			hf.close()
 
 
 # send to handler here
@@ -140,4 +164,4 @@ if __name__ == '__main__':
 	
 	# print(segments)
 	# consecutive_segments(segments)
-	seg_to_npz(file='01.inkml')
+	seg_to_npr(file='01.inkml')

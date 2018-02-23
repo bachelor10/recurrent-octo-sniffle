@@ -1,39 +1,39 @@
-from __future__ import print_function
+import keras
+from keras import backend
+import tensorflow as tf
 
-from keras.preprocessing import sequence
-from keras.models import Sequential
-from keras.layers import Dense, Embedding
-from keras.layers import GRU
-from keras.datasets import boston_housing
 
-max_features = 20000
-maxlen = 80  # cut texts after this number of words (among top max_features most common words)
-batch_size = 32
+class SeqTrainer:
+	def __init__(self):
+		self.classes = []
+	
+	def get_classes(self):
+		raise NotImplementedError()
 
-print('Loading data...')
-(x_train, y_train), (x_test, y_test) = boston_housing.load_data()
-print(len(x_train), 'train sequences')
-print(len(x_test), 'test sequences')
 
-print('Pad sequences (samples x time)')
-x_train = sequence.pad_sequences(x_train, maxlen=maxlen)
-x_test = sequence.pad_sequences(x_test, maxlen=maxlen)
-print('x_train shape:', x_train.shape)
-print('x_test shape:', x_test.shape)
+'''
+operation = True => predict
+operation = False => train
+'''
 
-print('Build model...')
-model = Sequential()
-model.add(Embedding(max_features, 128))
-model.add(GRU(128, dropout=0.2, recurrent_dropout=0.2))
-model.add(Dense(1, activation='sigmoid'))
 
-# try using different optimizers and different optimizer configs
-#model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy'])
+def parse_tf_ex(file, operation=False):
+	ft_to_ink = {
+		'ink': tf.VarLenFeature(dtype=tf.float32),
+		'shape': tf.FixedLenFeature([2], dtype=tf.int64)  # this is rows,cols of ink data
+	}
+	if not operation:
+		ft_to_ink['truth_index'] = tf.FixedLenFeature([1], dtype=tf.int64)
+	
+	res = tf.parse_single_example(file, ft_to_ink)
+	labels = None
+	if not operation:
+		labels = res['truth_index']
+	
+	res['ink'] = tf.sparse_tensor_to_dense(res['ink'])
+	#print(tf.data.Dataset.from_tensor_slices(tf.random_uniform([4,10])))
+	return res, labels
 
-print('Train...')
-#model.fit(x_train, y_train, batch_size=batch_size, epochs=2, validation_data=(x_test, y_test))
-#score, acc = model.evaluate(x_test, y_test, batch_size=batch_size)
-#print('Test score:', score)
-#print('Test accuracy:', acc)
 
-model.save('imdb_test.h5')
+if __name__ == '__main__':
+	parse_tf_ex(file='test.tfrecords')
