@@ -50,6 +50,18 @@ class Regular(Group):
     def __init__(self, id, mid_x):
         Group.__init__(self, mid_x)
         self.id = id
+    
+    @staticmethod
+    def asLatex(truth):
+        if truth == 'sqrt' or truth == 'alpha' or truth == 'beta' or truth == 'Delta' or truth == 'gamma' or truth == 'infty' or truth == 'lambda' or truth == 'pi' or truth == 'mu' or truth == 'phi' or truth == 'sigma' or truth == 'sum' or truth == 'times' or truth == 'rightarrow':
+            return '\\' + truth
+        elif truth == 'gt':
+            return '>'
+        elif truth == 'lt':
+            return '<'
+        
+        else:
+            return truth
 
 
 class Fraction(Group):
@@ -233,10 +245,10 @@ class Expression:
 
     def is_fraction(self, id, max_y, min_y):
         coords = self.segments[id].boundingbox
-        ignore = [id]
+        ignore = self.processed + [id] 
         
-        over = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, coords.mid_y, min_y)
-        under = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, max_y, coords.mid_y)
+        over = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, coords.mid_y, min_y, ignore)
+        under = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, max_y, coords.mid_y, ignore)
 
         print("Found fractions", over, under)
         return len(over) > 0 and len(under) > 0, over, under
@@ -267,7 +279,7 @@ class Expression:
                 if under_id in ids:
                     under_objects.append(self.fraction_search(under_id, ids, self.segments[over_id].boundingbox.mid_y + 200, self.segments[over_id].boundingbox.mid_y))
 
-            for under_id in under:    
+            for under_id in under:
                 if under_id not in self.processed:
                     mid_r = self.segments[id].boundingbox.mid_x
                     reg = Regular(under_id, mid_r)
@@ -276,8 +288,8 @@ class Expression:
             self.processed = self.processed + over + under + [id]
             self.segments[id].truth = 'frac'
 
-            over_objects = self.sort_groups_by_width(over_objects)
-            under_objects = self.sort_groups_by_width(under_objects)
+            #over_objects = self.sort_groups_by_width(over_objects)
+            #under_objects = self.sort_groups_by_width(under_objects)
 
             # return a Fraction
             mid = self.segments[id].boundingbox.mid_x
@@ -359,9 +371,9 @@ class Expression:
                 minus_ids.append(segment.id)
         
         # Check if minus signs is fractions
-        sorted_minus_ids = 
+        sorted_minus_ids = self.sort_ids_by_width(minus_ids)
         
-        self.find_fractions(minus_ids)
+        self.find_fractions(sorted_minus_ids)
 
 
         updated_ids = [i for i in minus_ids if i not in self.processed]
@@ -398,6 +410,8 @@ class Expression:
         num_latex = ''
         den_latex = ''
 
+        print(frac)
+
         for group in frac.numerator:
             if type(group) is Fraction:
                 num_latex += self.get_latex_frac(group)
@@ -419,7 +433,8 @@ class Expression:
             if type(group) is Fraction:
                 latex += self.get_latex_frac(group)
             elif type(group) is Regular:
-                latex += self.segments[group.id].truth
+                latex += Regular.asLatex(self.segments[group.id].truth)
+                #latex += self.segments[group.id].truth
         
         print(latex)
         return latex
@@ -439,6 +454,10 @@ class Predictor:
 
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
     CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
+    CLASS_INDICES = {']': 17, 'z': 38, 'int': 23, 'sqrt': 32, '3': 7, '\\infty': 22, 'neq': 27, '6': 10, '0': 4, '[': 16, '7': 11, '4': 8, '(': 0, 'x': 36, '\\alpha': 18, '\\lambda': 24, '\\beta': 19, '\\rightarrow': 30, '8': 12, ')': 1, '=': 14, 'y': 37, '\\phi': 28, '\\times': 35, '1': 5, '<': 25, '\\Delta': 15, '\\gamma': 20, '9': 13, '\\pi': 29, '2': 6, '\\sum': 33, '\\theta': 34, '\\mu': 26, '-': 3, '>': 21, '+': 2, '\\sigma': 31, '5': 9}
+
+    #{'gamma': 20, 'pi': 29, 'sum': 33, 'int': 23, 'theta': 34, '9': 13, 'lt': 25, '4': 8, 'times': 35, '5': 9, '(': 0, 'infty': 22, 'rightarrow': 30, 'neq': 27, 'gt': 21, '+': 2, '2': 6, '-': 3, '7': 11, 'sqrt': 32, ')': 1, '8': 12, 'beta': 19, 'y': 37, 'z': 38, '[': 16, '6': 10, 'x': 36, '=': 14, 'alpha': 18, 'mu': 26, 'sigma': 31, '0': 4, ']': 17, '3': 7, '1': 5, 'lambda': 24, 'Delta': 15, 'phi': 28}
+
 
     def __init__(self):
         self.model = keras.models.load_model(Predictor.MODEL_PATH)
@@ -448,20 +467,23 @@ class Predictor:
         processed = self.pre_process(segment_traces)
         print("Preprocess time", str(time() - start) + "ms")
         start = time()
-        output = self.model.predict(processed)
+        output = self.model.predict_proba(processed)
+        print("Predicted", output)
         print("Predict Time", str(time() - start) + "ms")
         
-        best_pred = (0, 0)
-        
+        proba_index = np.argmax(output[0])
+        for key, value in Predictor.CLASS_INDICES.items():
+            if value == proba_index:
+                return key
+        """
         for i, p in enumerate(output[0]):
 
             if p > best_pred[1]:
                 best_pred = (i, p)
+                Predictor.CLASS_INDICES
                 prediction = Predictor.CLASSES[i]
-                print('Index predicted',i)
-
-        
-        return prediction
+        """
+        #return prediction
         
     #https://gist.github.com/perrygeo/4512375
     def scale_linear_bycolumn(self, rawpoints, high=24, low=0, ma=0, mi=0):

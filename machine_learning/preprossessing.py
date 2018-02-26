@@ -105,7 +105,7 @@ print("Fitting model")
 
 model.fit_generator(
         train_generator,
-        epochs=3,
+        epochs=10,
         validation_data=validation_generator,
         validation_steps=(10995 / 64),
 )
@@ -113,9 +113,9 @@ model.fit_generator(
 print("Done!")
 model.save('my_model.h5')
 
-from keras.utils import plot_model
+#from keras.utils import plot_model
 
-plot_model(model, to_file='model.png', show_shapes=True)
+#plot_model(model, to_file='model.png', show_shapes=True)
 
 # creates a HDF5 file 'my_model.h5'
 #score = model.evaluate(x_test, y_test, verbose=0)
