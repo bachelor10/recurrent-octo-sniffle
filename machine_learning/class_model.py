@@ -351,9 +351,9 @@ class Expression:
 
 class Predictor:
     MODEL_PATH = os.getcwd() + '/machine_learning/my_model.h5'
-    CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
+    #CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
-    #CLASSES = os.listdir(os.getcwd() + '/train')
+    CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
 
     def __init__(self):
         self.model = keras.models.load_model(Predictor.MODEL_PATH)
