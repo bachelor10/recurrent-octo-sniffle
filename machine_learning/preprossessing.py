@@ -1,14 +1,10 @@
-from PIL import Image
 import keras
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, BatchNormalization, Activation, Dense, Flatten, Dropout
 from io import BytesIO
+import os
 from matplotlib import pyplot as plt
-"""
 
-
-
-"""
 
 
 from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_array, load_img
@@ -16,28 +12,18 @@ from keras.preprocessing.image import ImageDataGenerator, array_to_img, img_to_a
 def generate_dataset():
     print("Generating dataset")
     train_generator = ImageDataGenerator(
-        rescale = 1./255,
-        rotation_range = 8,
-        width_shift_range=0.08, 
-        shear_range=0.3,
-        height_shift_range=0.08, 
-        zoom_range=0.08
+        rescale = 1./255
     )
     print("Generating validation")
 
     validation_generator = ImageDataGenerator(
-        rescale = 1./255,
-        rotation_range = 8,
-        width_shift_range=0.08, 
-        shear_range=0.3,
-        height_shift_range=0.08, 
-        zoom_range=0.08
+        rescale = 1./255
     )
     print("Getting train data")
 
     train_generator = train_generator.flow_from_directory(
-        'train',
-        target_size=(45,45),
+        'train2',
+        target_size=(26,26),
         batch_size=64,
         color_mode='grayscale',
         class_mode='categorical',
@@ -65,12 +51,15 @@ def generate_dataset():
     """
 
     validation_generator = validation_generator.flow_from_directory(
-        'validation',
+        'validation2',
         target_size=(26, 26),
         batch_size=64,
         color_mode='grayscale',
-        class_mode='categorical',)
+        class_mode='categorical')
 
+    print("Validation classes", validation_generator.classes)
+    print("Validation class_indices", validation_generator.class_indices)
+    print("Classes", os.listdir(os.getcwd() + '/train2'))
     return train_generator, validation_generator
 
 
@@ -91,32 +80,22 @@ model.add(Dropout(0.5))
 model.add(Dense(13, activation='softmax'))
 """
 model = Sequential()
-model.add(Conv2D(32, (3, 3), input_shape=(45,45,1)))
-model.add(BatchNormalization(axis=-1))
-model.add(Activation('relu'))
-model.add(Conv2D(32, (3, 3)))
-model.add(BatchNormalization(axis=-1))
-model.add(Activation('relu'))
+model.add(Conv2D(32, (3, 3), input_shape=(26,26,1), activation="relu"))
+model.add(Conv2D(32, (3, 3), activation="relu"))
 model.add(MaxPooling2D(pool_size=(2,2)))
 
-model.add(Conv2D(64,(3, 3)))
-model.add(BatchNormalization(axis=-1))
-model.add(Activation('relu'))
-model.add(Conv2D(64, (3, 3)))
-model.add(BatchNormalization(axis=-1))
-model.add(Activation('relu'))
+model.add(Conv2D(64,(3, 3), activation="relu"))
+model.add(Conv2D(64, (3, 3), activation="relu"))
 model.add(MaxPooling2D(pool_size=(2,2)))
 
 model.add(Flatten())
 
 # Fully connected layer
-model.add(Dense(512))
-model.add(BatchNormalization())
+model.add(Dense(512, activation="relu"))
 model.add(Activation('relu'))
 model.add(Dropout(0.2))
-model.add(Dense(39))
+model.add(Dense(39, activation="softmax"))
 
-model.add(Activation('softmax'))
 print("Compiling model")
 
 model.compile(loss=keras.losses.categorical_crossentropy,

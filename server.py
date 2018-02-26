@@ -88,10 +88,8 @@ class WebSocket(websocket.WebSocketHandler):
                     expression = Expression(predictor)
                     print("Expression relative", str(time() - startExpression) + "s")
                     print("Expression", str(time() - start) + "s")
-                    startFeed = time()
                     expression.feed_traces(buffer_correct)
                     print("Feed traces", str(time() - start) + "s")
-                    classifyTime = time()
                     expression.classify_segments()
                     print("Classify segm", str(time() - start) + "s")
 
