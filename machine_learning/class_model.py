@@ -186,6 +186,7 @@ class Expression:
             segment = Segment(traces_for_segment, id)
             self.segments[id] = segment
 
+
     def join_segments(self, id1, id2, truth=''):
         segment1 = self.segments.pop(id1, None)
         segment2 = self.segments.pop(id2, None)
@@ -208,6 +209,11 @@ class Expression:
         return segments_in_area
 
 
+    def search_horizontal(self):
+        
+        pass
+
+
     def sort_id_list_x(self, ids):
         return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.mid_x, reverse=False)]
 
@@ -216,15 +222,69 @@ class Expression:
         self.groups.sort(key=lambda group: group.mid_x, reverse=False)
 
 
-    def is_fraction(self, id):
+    def is_fraction(self, id, max_y, min_y):
         coords = self.segments[id].boundingbox
         
-        over = self.find_segments_in_area(coords.max_x, coords.min_x, coords.min_y, coords.min_y - 200)
-        under = self.find_segments_in_area(coords.max_x, coords.min_x, coords.max_y + 200, coords.max_y) 
+        over = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, coords.mid_y, min_y)
+        under = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, max_y, coords.mid_y)
 
         return len(over) > 0 and len(under) > 0, over, under
 
 
+    def fraction_search(self, id, ids, max_y, min_y):
+        is_frac, over, under = self.is_fraction(id, max_y, min_y)
+            
+        if is_frac:
+
+            over = self.sort_id_list_x(over)
+            under = self.sort_id_list_x(under)
+
+            over_objects = []
+            under_objects = []
+
+            for over_id in over:
+                if over_id in ids:
+                    over_objects.append(self.fraction_search(over_id, ids, self.segments[over_id].boundingbox.mid_y, self.segments[over_id].boundingbox.mid_y - 200))
+                
+            for over_id in over:
+                if over_id not in self.processed:
+                    mid_r = self.segments[id].boundingbox.mid_x
+                    reg = Regular(over_id, mid_r)
+                    over_objects.append(reg)
+
+            for under_id in under:
+                if under_id in ids:
+                    under_objects.append(self.fraction_search(under_id, ids, self.segments[over_id].boundingbox.mid_y + 200, self.segments[over_id].boundingbox.mid_y))
+
+            for under_id in under:    
+                if under_id not in self.processed:
+                    mid_r = self.segments[id].boundingbox.mid_x
+                    reg = Regular(under_id, mid_r)
+                    under_objects.append(reg)
+
+            self.processed = self.processed + over + under + [id]
+            self.segments[id].truth = 'frac'
+
+            # return a Fraction
+            mid = self.segments[id].boundingbox.mid_x
+            fraction = Fraction(over_objects, under_objects, mid)
+            return fraction
+            
+        else:
+            # return a Regular 
+            self.processed.append(id)
+            regular = Regular(id, self.segments[id].boundingbox.mid_x)
+            return regular
+
+    
+    def find_fractions(self, ids):
+        for id in ids:
+            if id not in self.processed:
+                group = self.fraction_search(id, ids, self.segments[id].boundingbox.mid_y + 200, self.segments[id].boundingbox.mid_y - 200)
+                self.groups.append(group)
+
+
+    '''
     def find_fractions(self, ids):
         new_ids = []
 
@@ -250,21 +310,22 @@ class Expression:
                 new_ids.append(minus_id)
 
         return new_ids
-
+    '''
 
     def is_equalsign(self, id1, id2):
-        
-        coords1 = self.segments[id1].boundingbox
-        coords2 = self.segments[id2].boundingbox
+        try:
+            coords1 = self.segments[id1].boundingbox
+            coords2 = self.segments[id2].boundingbox
+        except KeyError:
+            return False
 
         return np.abs(coords1.mid_x - coords2.mid_x) < 50
 
 
     def find_equalsigns(self, ids):
-
         for pair in combinations(ids, r=2):
             if self.is_equalsign(pair[0], pair[1]):
-                self.join_segments(pair[0], pair[1], truth='=')
+                self.join_segments(pair[0], pair[1], truth='=')                
 
 
     def classify_segments(self):
@@ -277,11 +338,14 @@ class Expression:
                 minus_ids.append(segment.id)
         
         # Check if minus signs is fractions
-        start = time()
-        updated_ids = self.find_fractions(minus_ids)
+        self.find_fractions(minus_ids)
+
+
+        updated_ids = [i for i in minus_ids if i not in self.processed]
 
         # Check if minus signs is equalsigns
         if len(updated_ids) > 1:
+            print('Ids of minussigns sent to equalcheck:', updated_ids)
             self.find_equalsigns(updated_ids)
 
         #for id, segment in self.segments.items():
@@ -296,13 +360,6 @@ class Expression:
         
         # Sort groups
         self.sort_groups()
-        print("Post processing", str(time() - start) + "ms")
-
-
-
-    def search_horizontal(self):
-        
-        pass
 
 
     def create_segmentgroups(self):
@@ -315,13 +372,22 @@ class Expression:
 
     def get_latex_frac(self, frac):
 
-        print(frac.numerator)
-        print(frac.denominator)
+        num_latex = ''
+        den_latex = ''
 
-        numerator = ''.join([self.segments[seg].truth for seg in frac.numerator])
-        denominator = ''.join([self.segments[seg].truth for seg in frac.denominator])
+        for group in frac.numerator:
+            if type(group) is Fraction:
+                num_latex += self.get_latex_frac(group)
+            elif type(group) is Regular:
+                num_latex += self.segments[group.id].truth
+        
+        for group in frac.denominator:
+            if type(group) is Fraction:
+                den_latex += self.get_latex_frac(group)
+            elif type(group) is Regular:
+                den_latex += self.segments[group.id].truth
 
-        return '\\frac{' + numerator + '}{' + denominator + '}'
+        return '\\frac{' + num_latex + '}{' + den_latex + '}'
 
 
     def get_latex(self):
@@ -342,7 +408,10 @@ class Expression:
 
 class Predictor:
     MODEL_PATH = os.getcwd() + '/machine_learning/my_model.h5'
-    CLASSES = os.listdir(os.getcwd() + '/machine_learning' + '/train')    
+    #MODEL_PATH = os.getcwd() + '/machine_learning/new_model.h5'
+    #print(os.listdir(os.getcwd() + '/machine_learning' + '/train'))
+    CLASSES = ['+', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=']
+    #CLASSES = os.listdir(os.getcwd() + '/machine_learning' + '/train')    
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
     #CLASSES = os.listdir(os.getcwd() + '/train')
 
@@ -364,7 +433,9 @@ class Predictor:
             if p > best_pred[1]:
                 best_pred = (i, p)
                 prediction = Predictor.CLASSES[i]
+                print('Index predicted',i)
 
+        
         return prediction
         
     #https://gist.github.com/perrygeo/4512375
