@@ -78,30 +78,15 @@ class WebSocket(websocket.WebSocketHandler):
         if client:
             if 'status' in parsed_message:
                 if parsed_message['status'] == 201:  # http created = 201
-                    # pass to inkml creation
                     print("Running prediction")
                     start = time()
-                    #prediction = predictor.predict(client.buffer)
                     buffer_correct = [i for i in client.buffer if i != []]
-                    print("Buffer correct", str(time() - start) + "s")
                     startExpression = time()
                     expression = Expression(predictor)
-                    print("Expression relative", str(time() - startExpression) + "s")
-                    print("Expression", str(time() - start) + "s")
-                    startFeed = time()
                     expression.feed_traces(buffer_correct)
-                    print("Feed traces", str(time() - start) + "s")
-                    classifyTime = time()
                     expression.classify_segments()
-                    print("Classify segm", str(time() - start) + "s")
 
                     latex = expression.get_latex()
-                    print("Get latex", str(time() - start) + "s")
-
-                    #print("Predicted:", prediction)
-
-                    #print("Predicted", prediction[0], "as", prediction[1])
-                    #self.write_message("Predicted: " + str(prediction))
                     print("Total duration", str(time() - start) + "ms")
                     self.write_message(latex)
 

@@ -198,13 +198,14 @@ class Expression:
         self.segments[id] = new_segment
         
     
-    def find_segments_in_area(self, max_x, min_x, max_y, min_y):
+    def find_segments_in_area(self, max_x, min_x, max_y, min_y, ignore=[]):
         # Searches through segments and look for middle points inside area
         segments_in_area = []
 
         for id, segment in self.segments.items():
             if min_x <= segment.boundingbox.mid_x <= max_x and min_y <= segment.boundingbox.mid_y <= max_y:
-                segments_in_area.append(segment.id)
+                if segment.id not in ignore:
+                    segments_in_area.append(segment.id)
 
         return segments_in_area
 
@@ -216,18 +217,28 @@ class Expression:
 
     def sort_id_list_x(self, ids):
         return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.mid_x, reverse=False)]
+    
+
+    def sort_ids_by_width(self, ids):
+        return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.width, reverse=False)]
 
 
     def sort_groups(self):
         self.groups.sort(key=lambda group: group.mid_x, reverse=False)
+    
+
+    def sort_groups_by_width(self, groups):
+        return groups.sort(key=lambda group: group.mid_x, reverse=True)
 
 
     def is_fraction(self, id, max_y, min_y):
         coords = self.segments[id].boundingbox
+        ignore = [id]
         
         over = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, coords.mid_y, min_y)
         under = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, max_y, coords.mid_y)
 
+        print("Found fractions", over, under)
         return len(over) > 0 and len(under) > 0, over, under
 
 
@@ -264,6 +275,9 @@ class Expression:
 
             self.processed = self.processed + over + under + [id]
             self.segments[id].truth = 'frac'
+
+            over_objects = self.sort_groups_by_width(over_objects)
+            under_objects = self.sort_groups_by_width(under_objects)
 
             # return a Fraction
             mid = self.segments[id].boundingbox.mid_x
@@ -303,7 +317,7 @@ class Expression:
                 self.groups.append(fraction)
 
                 # Set minus_id, over and under to processed
-                self.processed.append(minus_id);
+                self.processed.append(minus_id)
                 self.processed = self.processed + over + under
 
             else:
@@ -323,9 +337,16 @@ class Expression:
 
 
     def find_equalsigns(self, ids):
-        for pair in combinations(ids, r=2):
-            if self.is_equalsign(pair[0], pair[1]):
-                self.join_segments(pair[0], pair[1], truth='=')                
+        still_equalsigns = True
+        while still_equalsigns:
+            for pair in combinations(ids, r=2):
+                if self.is_equalsign(pair[0], pair[1]):
+                    self.join_segments(pair[0], pair[1], truth='=')
+                    del ids[ids.index(pair[0])]
+                    del ids[ids.index(pair[1])]
+                    break
+            else:
+                still_equalsigns = False
 
 
     def classify_segments(self):
@@ -338,6 +359,8 @@ class Expression:
                 minus_ids.append(segment.id)
         
         # Check if minus signs is fractions
+        sorted_minus_ids = 
+        
         self.find_fractions(minus_ids)
 
 
@@ -412,8 +435,10 @@ class Predictor:
     #print(os.listdir(os.getcwd() + '/machine_learning' + '/train'))
     CLASSES = ['+', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=']
     #CLASSES = os.listdir(os.getcwd() + '/machine_learning' + '/train')    
+    #CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
+
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
-    #CLASSES = os.listdir(os.getcwd() + '/train')
+    CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
 
     def __init__(self):
         self.model = keras.models.load_model(Predictor.MODEL_PATH)
