@@ -61,14 +61,12 @@ def parse_single_segment(segment):  # segment object
 	traces = segment.traces
 	stroke_lengths = find_tracelength(traces)
 	total_points = sum(stroke_lengths)
-	np_ink = np.zeros((50, 3), dtype=np.float32)
+	np_ink = np.zeros((total_points, 3), dtype=np.float32)
 	it = 0
 	
 	for i, trace in enumerate(traces):
+		print(i)
 		trace = np.array(trace).astype(np.float32)
-		plot_trace(trace)
-		trace = rdp(trace)
-		print("Shape: ", trace.shape)
 		np_ink[it:(it + len(trace)), 0:2] = trace
 		it += len(trace)
 		np_ink[it - 1, 2] = 1  # stroke end
@@ -81,6 +79,7 @@ def parse_single_segment(segment):  # segment object
 	relation_between = upper - lower
 	relation_between[relation_between == 0] = 1
 	np_ink[:, 0:2] = (np_ink[:, 0:2] - lower) / relation_between
+	
 	np_ink = np_ink[1:, 0:2] - np_ink[0:-1, 0:2]
 	np_ink = np_ink[1:, :]
 	return np_ink, truth
@@ -90,29 +89,34 @@ def get_inkml_root(file):
 	return ET.parse(file).getroot()
 
 
-def seg_to_tfexample(directory=None, file=None):
-	print("Trying to write segments to file.")
-	writer = tf.python_io.TFRecordWriter('test.tfrecords')
+def seg_to_tfexample(filename, writer = None, directory=None):
 	truths = []
-	if not (file is None):
-		root = get_inkml_root(file)
-		segm = find_segments(root)
-	else:
-		return None
-	
-	for i, t in enumerate(segm):
-		if i < 1:
-			tf_ex, truth = parse_single_segment(t)
-			print(truth)
-			if truth not in truths:
-				truths.append(truth)
-			ftore = tf.train.Example(features=tf.train.Features(feature={
-				'truth_index': tf.train.Feature(int64_list=tf.train.Int64List(value=[truths.index(truth)])),
-				'ink': tf.train.Feature(float_list=tf.train.FloatList(value=tf_ex.flatten())),
-				'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=tf_ex.shape))
-			}))
-			writer.write(ftore.SerializeToString())
-	writer.close()
+	print("Trying to write segments to file.")
+	try:
+		for file in os.listdir(directory):
+			
+			if file.endswith(".inkml"):
+				root = get_inkml_root(directory + file)
+				segm = find_segments(root)
+				for i, t in enumerate(segm):
+					if i < 1:
+						tf_ex, truth = parse_single_segment(t)
+						print(truth)
+						if truth not in truths:
+							truths.append(truth)
+						ftore = tf.train.Example(features=tf.train.Features(feature={
+							'truth_index': tf.train.Feature(int64_list=tf.train.Int64List(value=[truths.index(truth)])),
+							'ink': tf.train.Feature(float_list=tf.train.FloatList(value=tf_ex.flatten())),
+							'shape': tf.train.Feature(int64_list=tf.train.Int64List(value=tf_ex.shape))
+						}))
+						writer.write(ftore.SerializeToString())
+		with tf.gfile.GFile(filename + ".txt", "w",) as f:
+			for t in truths:
+				f.write(t + "\n")
+		return truths
+	except ET.ParseError:
+		print("Error handling file: ", file)
+		
 
 
 datafile = 'data.h5'
@@ -123,6 +127,7 @@ def seg_to_npr(directory=None, file=None):
 	print("Trying to write segments to file.")
 	
 	truths = []
+	data = []
 	# for files in directory
 	# parse inkml
 	# find segments
@@ -140,11 +145,14 @@ def seg_to_npr(directory=None, file=None):
 		t here are segment objects.
 	'''
 	for i, t in enumerate(segm):
-		print(t.truth)
+		#print(t.truth)
 		if i < 1:
 			tf_ex, truth = parse_single_segment(t)
 			if truth not in truths:
 				truths.append(truth)
+				#with h5py.File(datafile, "w") as f:
+					#data = f.create_dataset("data",data=tf_ex)
+	
 
 
 # send to handler here
@@ -162,5 +170,7 @@ if __name__ == '__main__':
 	
 	# print(segments)
 	# consecutive_segments(segments)
-	seg_to_npr(file='01.inkml')
+	writer = tf.python_io.TFRecordWriter('GT.tfrecords')
+	seg_to_tfexample("GT", writer=writer, directory=os.curdir+"/BACHELOR_DATA/GT/")
+	writer.close()
 	
