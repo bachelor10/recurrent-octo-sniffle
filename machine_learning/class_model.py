@@ -50,6 +50,18 @@ class Regular(Group):
     def __init__(self, id, mid_x):
         Group.__init__(self, mid_x)
         self.id = id
+    
+    @staticmethod
+    def asLatex(truth):
+        if truth == 'sqrt' or truth == 'alpha' or truth == 'beta' or truth == 'Delta' or truth == 'gamma' or truth == 'infty' or truth == 'lambda' or truth == 'pi' or truth == 'mu' or truth == 'phi' or truth == 'sigma' or truth == 'sum' or truth == 'times' or truth == 'rightarrow':
+            return '\\' + truth
+        elif truth == 'gt':
+            return '>'
+        elif truth == 'lt':
+            return '<'
+        
+        else:
+            return truth
 
 
 class Fraction(Group):
@@ -339,7 +351,8 @@ class Expression:
             if type(group) is Fraction:
                 latex += self.get_latex_frac(group)
             elif type(group) is Regular:
-                latex += self.segments[group.id].truth
+                latex += Regular.asLatex(self.segments[group.id].truth)
+                #latex += self.segments[group.id].truth
         
         print(latex)
         return latex
@@ -354,6 +367,7 @@ class Predictor:
     #CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
     CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
+    CLASS_INDICES = {']': 17, 'z': 38, 'int': 23, 'sqrt': 32, '3': 7, 'infty': 22, 'neq': 27, '6': 10, '0': 4, '[': 16, '7': 11, '4': 8, '(': 0, 'x': 36, 'alpha': 18, 'lambda': 24, 'beta': 19, 'rightarrow': 30, '8': 12, ')': 1, '=': 14, 'y': 37, 'phi': 28, 'times': 35, '1': 5, 'lt': 25, 'Delta': 15, 'gamma': 20, '9': 13, 'pi': 29, '2': 6, 'sum': 33, 'theta': 34, 'mu': 26, '-': 3, 'gt': 21, '+': 2, 'sigma': 31, '5': 9}
 
     def __init__(self):
         self.model = keras.models.load_model(Predictor.MODEL_PATH)
@@ -363,18 +377,23 @@ class Predictor:
         processed = self.pre_process(segment_traces)
         print("Preprocess time", str(time() - start) + "ms")
         start = time()
-        output = self.model.predict(processed)
+        output = self.model.predict_proba(processed)
+        print("Predicted", output)
         print("Predict Time", str(time() - start) + "ms")
         
-        best_pred = (0, 0)
-        
+        proba_index = np.argmax(output[0])
+        for key, value in Predictor.CLASS_INDICES.items():
+            if value == proba_index:
+                return key
+        """
         for i, p in enumerate(output[0]):
 
             if p > best_pred[1]:
                 best_pred = (i, p)
+                Predictor.CLASS_INDICES
                 prediction = Predictor.CLASSES[i]
-
-        return prediction
+        """
+        #return prediction
         
     #https://gist.github.com/perrygeo/4512375
     def scale_linear_bycolumn(self, rawpoints, high=24, low=0, ma=0, mi=0):
