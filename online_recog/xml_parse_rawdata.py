@@ -2,7 +2,6 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
-
 import xml.etree.ElementTree as ET
 import uuid, math, time
 import numpy as np
@@ -15,6 +14,7 @@ import matplotlib.quiver as quiv
 from rdp import rdp, rdp_iter  # https://pypi.python.org/pypi/rdp
 import tensorflow as tf
 import h5py
+from scipy import signal
 
 from machine_learning.xml_parse import format_trace, find_segments
 
@@ -61,11 +61,14 @@ def parse_single_segment(segment):  # segment object
 	traces = segment.traces
 	stroke_lengths = find_tracelength(traces)
 	total_points = sum(stroke_lengths)
-	np_ink = np.zeros((total_points, 3), dtype=np.float32)
+	np_ink = np.zeros((50, 3), dtype=np.float32)
 	it = 0
 	
-	for trace in traces:
+	for i, trace in enumerate(traces):
 		trace = np.array(trace).astype(np.float32)
+		plot_trace(trace)
+		trace = rdp(trace)
+		print("Shape: ", trace.shape)
 		np_ink[it:(it + len(trace)), 0:2] = trace
 		it += len(trace)
 		np_ink[it - 1, 2] = 1  # stroke end
@@ -79,9 +82,7 @@ def parse_single_segment(segment):  # segment object
 	relation_between[relation_between == 0] = 1
 	np_ink[:, 0:2] = (np_ink[:, 0:2] - lower) / relation_between
 	np_ink = np_ink[1:, 0:2] - np_ink[0:-1, 0:2]
-	# print (np_ink)
 	np_ink = np_ink[1:, :]
-	# print(np_ink)
 	return np_ink, truth
 
 
@@ -103,7 +104,6 @@ def seg_to_tfexample(directory=None, file=None):
 		if i < 1:
 			tf_ex, truth = parse_single_segment(t)
 			print(truth)
-			print("Shape: ", tf_ex.shape)
 			if truth not in truths:
 				truths.append(truth)
 			ftore = tf.train.Example(features=tf.train.Features(feature={
@@ -113,6 +113,10 @@ def seg_to_tfexample(directory=None, file=None):
 			}))
 			writer.write(ftore.SerializeToString())
 	writer.close()
+
+
+datafile = 'data.h5'
+classfile = 'classes.h5'
 
 
 def seg_to_npr(directory=None, file=None):
@@ -136,17 +140,11 @@ def seg_to_npr(directory=None, file=None):
 		t here are segment objects.
 	'''
 	for i, t in enumerate(segm):
-		# print(t.truth)
+		print(t.truth)
 		if i < 1:
 			tf_ex, truth = parse_single_segment(t)
-			print(truth)
-			print("Shape: ", tf_ex.shape)
 			if truth not in truths:
 				truths.append(truth)
-			# TODO downsample data (?)
-			hf = h5py.File(name='hest.h5', mode='w')
-			hf.create_dataset('data_1', data=tf_ex)
-			hf.close()
 
 
 # send to handler here
@@ -165,3 +163,4 @@ if __name__ == '__main__':
 	# print(segments)
 	# consecutive_segments(segments)
 	seg_to_npr(file='01.inkml')
+	
