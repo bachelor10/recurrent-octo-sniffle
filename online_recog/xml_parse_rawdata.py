@@ -171,6 +171,8 @@ if __name__ == '__main__':
 	# print(segments)
 	# consecutive_segments(segments)
 	writer = tf.python_io.TFRecordWriter('GT.tfrecords')
-	seg_to_tfexample("GT", writer=writer, directory=os.curdir+"/BACHELOR_DATA/GT/")
+	trt = seg_to_tfexample("GT", writer=writer, directory=os.curdir+"/BACHELOR_DATA/GT/")
+	arr = np.array(trt)
+	np.savez('truth_index.npz',data=arr)
 	writer.close()
 	
