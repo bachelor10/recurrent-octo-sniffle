@@ -124,12 +124,10 @@ class Segmentgroup:
     
 class Expression:
     def __init__(self, predictor):
-        start = time()
         self.groups = []
         self.segments = dict()
         self.predictor = predictor
         self.processed = []
-        print("Created expression", str(time() - start) + "s")
 
     def create_tracegroups(self, traces, trace_pairs):
         tracegroups = []
@@ -181,14 +179,9 @@ class Expression:
 
 
     def feed_traces(self, traces):
-        start = time()
         overlap_pairs = self.find_overlap_pairs(traces)
         tracegroups = self.create_tracegroups(traces, overlap_pairs)
         self.create_segments(traces, tracegroups)
-        print("Feed traces time", str(time() - start) + "ms")
-
-        #for id, segment in self.segments.items():
-        #    segment.print_info()
 
 
     def create_segments(self, traces, tracegroups):
@@ -197,6 +190,7 @@ class Expression:
             id = str(i)
             segment = Segment(traces_for_segment, id)
             self.segments[id] = segment
+
 
     def join_segments(self, id1, id2, truth=''):
         segment1 = self.segments.pop(id1, None)
@@ -221,24 +215,100 @@ class Expression:
         return segments_in_area
 
 
+    def search_horizontal(self):
+        
+        pass
+
+
     def sort_id_list_x(self, ids):
         return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.mid_x, reverse=False)]
+    
+
+    def sort_ids_by_width(self, ids):
+        return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.width, reverse=True)]
 
 
     def sort_groups(self):
         self.groups.sort(key=lambda group: group.mid_x, reverse=False)
+    
+
+    def sort_groups_by_width(self, groups):
+        groups.sort(key=lambda group: group.mid_x, reverse=True)
 
 
-    def is_fraction(self, id):
+    def is_fraction(self, id, max_y, min_y):
         coords = self.segments[id].boundingbox
-        ignore = [id]
-        over = self.find_segments_in_area(coords.max_x, coords.min_x, coords.min_y, coords.min_y - 200, ignore)
-        under = self.find_segments_in_area(coords.max_x, coords.min_x, coords.max_y + 200, coords.max_y, ignore)
 
-        print("Found fractions", len(over), len(under))
+        ignore = self.processed + [id] 
+        
+        over = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, coords.mid_y, min_y, ignore)
+        under = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, max_y, coords.mid_y, ignore)
+
         return len(over) > 0 and len(under) > 0, over, under
 
 
+    def fraction_search(self, id, ids, max_y, min_y):
+        is_frac, over, under = self.is_fraction(id, max_y, min_y)
+        
+        if is_frac:
+
+            over = self.sort_id_list_x(over)
+            under = self.sort_id_list_x(under)
+
+            over_objects = []
+            under_objects = []
+
+            for over_id in over:
+                if over_id in ids:
+                    over_objects.append(self.fraction_search(over_id, ids, self.segments[id].boundingbox.mid_y - 1, self.segments[over_id].boundingbox.mid_y - 200))
+                
+            for over_id in over:
+                if over_id not in self.processed:
+                    mid_r = self.segments[over_id].boundingbox.mid_x
+                    reg = Regular(over_id, mid_r)
+                    over_objects.append(reg)
+
+            for under_id in under:
+                if under_id in ids:
+                    under_objects.append(self.fraction_search(under_id, ids, self.segments[under_id].boundingbox.mid_y + 200, self.segments[id].boundingbox.mid_y + 1))
+
+            for under_id in under:
+                if under_id not in self.processed:
+                    mid_r = self.segments[under_id].boundingbox.mid_x
+                    reg = Regular(under_id, mid_r)
+                    under_objects.append(reg)
+
+            self.processed = self.processed + over + under + [id]
+            self.segments[id].truth = 'frac'
+
+            over_objects.sort(key=lambda group: group.mid_x, reverse=False)
+            under_objects.sort(key=lambda group: group.mid_x, reverse=False)
+
+            # return a Fraction
+            mid = self.segments[id].boundingbox.mid_x
+            fraction = Fraction(over_objects, under_objects, mid)
+            return fraction
+            
+        else:
+            # return a Regular 
+            self.processed.append(id)
+            regular = Regular(id, self.segments[id].boundingbox.mid_x)
+            return regular
+
+    
+    def find_fractions(self, ids):
+        for id in ids:
+            if id not in self.processed:
+                max_y = self.segments[id].boundingbox.mid_y + 200
+                min_y = self.segments[id].boundingbox.mid_y - 200
+                is_frac, over, under = self.is_fraction(id, max_y, min_y)
+
+                if is_frac:
+                    group = self.fraction_search(id, ids, self.segments[id].boundingbox.mid_y + 200, self.segments[id].boundingbox.mid_y - 200)
+                    self.groups.append(group)
+
+
+    '''
     def find_fractions(self, ids):
         new_ids = []
 
@@ -264,18 +334,19 @@ class Expression:
                 new_ids.append(minus_id)
 
         return new_ids
-
+    '''
 
     def is_equalsign(self, id1, id2):
-        
-        coords1 = self.segments[id1].boundingbox
-        coords2 = self.segments[id2].boundingbox
+        try:
+            coords1 = self.segments[id1].boundingbox
+            coords2 = self.segments[id2].boundingbox
+        except KeyError:
+            return False
 
         return np.abs(coords1.mid_x - coords2.mid_x) < 50
 
 
     def find_equalsigns(self, ids):
-
         still_equalsigns = True
         while still_equalsigns:
             for pair in combinations(ids, r=2):
@@ -298,8 +369,15 @@ class Expression:
                 minus_ids.append(segment.id)
         
         # Check if minus signs is fractions
-        start = time()
-        updated_ids = self.find_fractions(minus_ids)
+
+        print(minus_ids)
+        sorted_minus_ids = self.sort_ids_by_width(minus_ids)
+        print(sorted_minus_ids)
+        self.find_fractions(sorted_minus_ids)
+
+
+        updated_ids = [i for i in minus_ids if i not in self.processed]
+
 
         # Check if minus signs is equalsigns
         if len(updated_ids) > 1:
@@ -317,13 +395,6 @@ class Expression:
         
         # Sort groups
         self.sort_groups()
-        print("Post processing", str(time() - start) + "ms")
-
-
-
-    def search_horizontal(self):
-        
-        pass
 
 
     def create_segmentgroups(self):
@@ -336,13 +407,24 @@ class Expression:
 
     def get_latex_frac(self, frac):
 
-        print(frac.numerator)
-        print(frac.denominator)
+        num_latex = ''
+        den_latex = ''
 
-        numerator = ''.join([self.segments[seg].truth for seg in frac.numerator])
-        denominator = ''.join([self.segments[seg].truth for seg in frac.denominator])
+        print(frac)
 
-        return '\\frac{' + numerator + '}{' + denominator + '}'
+        for group in frac.numerator:
+            if type(group) is Fraction:
+                num_latex += self.get_latex_frac(group)
+            elif type(group) is Regular:
+                num_latex += self.segments[group.id].truth
+        
+        for group in frac.denominator:
+            if type(group) is Fraction:
+                den_latex += self.get_latex_frac(group)
+            elif type(group) is Regular:
+                den_latex += self.segments[group.id].truth
+
+        return '\\frac{' + num_latex + '}{' + den_latex + '}'
 
 
     def get_latex(self):
@@ -351,7 +433,7 @@ class Expression:
             if type(group) is Fraction:
                 latex += self.get_latex_frac(group)
             elif type(group) is Regular:
-                latex += Regular.asLatex(self.segments[group.id].truth)
+                latex += self.segments[group.id].truth
                 #latex += self.segments[group.id].truth
         
         print(latex)
@@ -364,10 +446,18 @@ class Expression:
 
 class Predictor:
     MODEL_PATH = os.getcwd() + '/machine_learning/my_model.h5'
+    #MODEL_PATH = os.getcwd() + '/machine_learning/new_model.h5'
+    #print(os.listdir(os.getcwd() + '/machine_learning' + '/train'))
+    CLASSES = ['+', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=']
+    #CLASSES = os.listdir(os.getcwd() + '/machine_learning' + '/train')    
     #CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
+
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
-    #CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
-    CLASS_INDICES = {']': 17, 'z': 38, 'int': 23, 'sqrt': 32, '3': 7, 'infty': 22, 'neq': 27, '6': 10, '0': 4, '[': 16, '7': 11, '4': 8, '(': 0, 'x': 36, 'alpha': 18, 'lambda': 24, 'beta': 19, 'rightarrow': 30, '8': 12, ')': 1, '=': 14, 'y': 37, 'phi': 28, 'times': 35, '1': 5, 'lt': 25, 'Delta': 15, 'gamma': 20, '9': 13, 'pi': 29, '2': 6, 'sum': 33, 'theta': 34, 'mu': 26, '-': 3, 'gt': 21, '+': 2, 'sigma': 31, '5': 9}
+    CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
+    CLASS_INDICES = {']': 17, 'z': 38, 'int': 23, 'sqrt': 32, '3': 7, '\\infty': 22, 'neq': 27, '6': 10, '0': 4, '[': 16, '7': 11, '4': 8, '(': 0, 'x': 36, '\\alpha': 18, '\\lambda': 24, '\\beta': 19, '\\rightarrow': 30, '8': 12, ')': 1, '=': 14, 'y': 37, '\\phi': 28, '\\times': 35, '1': 5, '<': 25, '\\Delta': 15, '\\gamma': 20, '9': 13, '\\pi': 29, '2': 6, '\\sum': 33, '\\theta': 34, '\\mu': 26, '-': 3, '>': 21, '+': 2, '\\sigma': 31, '5': 9}
+
+    #{'gamma': 20, 'pi': 29, 'sum': 33, 'int': 23, 'theta': 34, '9': 13, 'lt': 25, '4': 8, 'times': 35, '5': 9, '(': 0, 'infty': 22, 'rightarrow': 30, 'neq': 27, 'gt': 21, '+': 2, '2': 6, '-': 3, '7': 11, 'sqrt': 32, ')': 1, '8': 12, 'beta': 19, 'y': 37, 'z': 38, '[': 16, '6': 10, 'x': 36, '=': 14, 'alpha': 18, 'mu': 26, 'sigma': 31, '0': 4, ']': 17, '3': 7, '1': 5, 'lambda': 24, 'Delta': 15, 'phi': 28}
+
 
     def __init__(self):
         self.model = keras.models.load_model(Predictor.MODEL_PATH)
@@ -407,8 +497,8 @@ class Predictor:
         return output
 
     def pre_process(self, traces):
-        resolution = 24
-        image_resolution = 26
+        resolution = 45
+        image_resolution = 45
 
         image = Image.new('L', (image_resolution, image_resolution), "white")
         draw = ImageDraw.Draw(image)
@@ -477,6 +567,9 @@ class Predictor:
 
 
         i = image.convert('LA')
+        i.thumbnail((26, 26))
+
+        #i.show()
 
         arr = np.asarray(i)
 
