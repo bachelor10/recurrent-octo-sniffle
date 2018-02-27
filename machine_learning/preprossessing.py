@@ -87,13 +87,12 @@ model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Conv2D(64,(3, 3), activation="relu"))
 model.add(Conv2D(64, (3, 3), activation="relu"))
 model.add(MaxPooling2D(pool_size=(2,2)))
-
+model.add(Dropout(0.25))
 model.add(Flatten())
 
 # Fully connected layer
 model.add(Dense(512, activation="relu"))
-model.add(Activation('relu'))
-model.add(Dropout(0.2))
+model.add(Dropout(0.5))
 model.add(Dense(39, activation="softmax"))
 
 print("Compiling model")
@@ -105,9 +104,8 @@ print("Fitting model")
 
 model.fit_generator(
         train_generator,
-        epochs=10,
-        validation_data=validation_generator,
-        validation_steps=(10995 / 64),
+        epochs=3,
+        validation_data=validation_generator
 )
 
 print("Done!")

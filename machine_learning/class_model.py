@@ -124,12 +124,10 @@ class Segmentgroup:
     
 class Expression:
     def __init__(self, predictor):
-        start = time()
         self.groups = []
         self.segments = dict()
         self.predictor = predictor
         self.processed = []
-        print("Created expression", str(time() - start) + "s")
 
     def create_tracegroups(self, traces, trace_pairs):
         tracegroups = []
@@ -181,14 +179,9 @@ class Expression:
 
 
     def feed_traces(self, traces):
-        start = time()
         overlap_pairs = self.find_overlap_pairs(traces)
         tracegroups = self.create_tracegroups(traces, overlap_pairs)
         self.create_segments(traces, tracegroups)
-        print("Feed traces time", str(time() - start) + "ms")
-
-        #for id, segment in self.segments.items():
-        #    segment.print_info()
 
 
     def create_segments(self, traces, tracegroups):
@@ -232,7 +225,7 @@ class Expression:
     
 
     def sort_ids_by_width(self, ids):
-        return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.width, reverse=False)]
+        return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.width, reverse=True)]
 
 
     def sort_groups(self):
@@ -240,23 +233,23 @@ class Expression:
     
 
     def sort_groups_by_width(self, groups):
-        return groups.sort(key=lambda group: group.mid_x, reverse=True)
+        groups.sort(key=lambda group: group.mid_x, reverse=True)
 
 
     def is_fraction(self, id, max_y, min_y):
         coords = self.segments[id].boundingbox
+
         ignore = self.processed + [id] 
         
         over = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, coords.mid_y, min_y, ignore)
         under = self.find_segments_in_area(coords.max_x+20, coords.min_x-20, max_y, coords.mid_y, ignore)
 
-        print("Found fractions", over, under)
         return len(over) > 0 and len(under) > 0, over, under
 
 
     def fraction_search(self, id, ids, max_y, min_y):
         is_frac, over, under = self.is_fraction(id, max_y, min_y)
-            
+        
         if is_frac:
 
             over = self.sort_id_list_x(over)
@@ -267,29 +260,29 @@ class Expression:
 
             for over_id in over:
                 if over_id in ids:
-                    over_objects.append(self.fraction_search(over_id, ids, self.segments[over_id].boundingbox.mid_y, self.segments[over_id].boundingbox.mid_y - 200))
+                    over_objects.append(self.fraction_search(over_id, ids, self.segments[id].boundingbox.mid_y - 1, self.segments[over_id].boundingbox.mid_y - 200))
                 
             for over_id in over:
                 if over_id not in self.processed:
-                    mid_r = self.segments[id].boundingbox.mid_x
+                    mid_r = self.segments[over_id].boundingbox.mid_x
                     reg = Regular(over_id, mid_r)
                     over_objects.append(reg)
 
             for under_id in under:
                 if under_id in ids:
-                    under_objects.append(self.fraction_search(under_id, ids, self.segments[over_id].boundingbox.mid_y + 200, self.segments[over_id].boundingbox.mid_y))
+                    under_objects.append(self.fraction_search(under_id, ids, self.segments[under_id].boundingbox.mid_y + 200, self.segments[id].boundingbox.mid_y + 1))
 
             for under_id in under:
                 if under_id not in self.processed:
-                    mid_r = self.segments[id].boundingbox.mid_x
+                    mid_r = self.segments[under_id].boundingbox.mid_x
                     reg = Regular(under_id, mid_r)
                     under_objects.append(reg)
 
             self.processed = self.processed + over + under + [id]
             self.segments[id].truth = 'frac'
 
-            #over_objects = self.sort_groups_by_width(over_objects)
-            #under_objects = self.sort_groups_by_width(under_objects)
+            over_objects.sort(key=lambda group: group.mid_x, reverse=False)
+            under_objects.sort(key=lambda group: group.mid_x, reverse=False)
 
             # return a Fraction
             mid = self.segments[id].boundingbox.mid_x
@@ -306,8 +299,13 @@ class Expression:
     def find_fractions(self, ids):
         for id in ids:
             if id not in self.processed:
-                group = self.fraction_search(id, ids, self.segments[id].boundingbox.mid_y + 200, self.segments[id].boundingbox.mid_y - 200)
-                self.groups.append(group)
+                max_y = self.segments[id].boundingbox.mid_y + 200
+                min_y = self.segments[id].boundingbox.mid_y - 200
+                is_frac, over, under = self.is_fraction(id, max_y, min_y)
+
+                if is_frac:
+                    group = self.fraction_search(id, ids, self.segments[id].boundingbox.mid_y + 200, self.segments[id].boundingbox.mid_y - 200)
+                    self.groups.append(group)
 
 
     '''
@@ -371,16 +369,18 @@ class Expression:
                 minus_ids.append(segment.id)
         
         # Check if minus signs is fractions
+
+        print(minus_ids)
         sorted_minus_ids = self.sort_ids_by_width(minus_ids)
-        
+        print(sorted_minus_ids)
         self.find_fractions(sorted_minus_ids)
 
 
         updated_ids = [i for i in minus_ids if i not in self.processed]
 
+
         # Check if minus signs is equalsigns
         if len(updated_ids) > 1:
-            print('Ids of minussigns sent to equalcheck:', updated_ids)
             self.find_equalsigns(updated_ids)
 
         #for id, segment in self.segments.items():
@@ -433,7 +433,7 @@ class Expression:
             if type(group) is Fraction:
                 latex += self.get_latex_frac(group)
             elif type(group) is Regular:
-                latex += Regular.asLatex(self.segments[group.id].truth)
+                latex += self.segments[group.id].truth
                 #latex += self.segments[group.id].truth
         
         print(latex)
@@ -497,8 +497,8 @@ class Predictor:
         return output
 
     def pre_process(self, traces):
-        resolution = 24
-        image_resolution = 26
+        resolution = 45
+        image_resolution = 45
 
         image = Image.new('L', (image_resolution, image_resolution), "white")
         draw = ImageDraw.Draw(image)
@@ -567,6 +567,9 @@ class Predictor:
 
 
         i = image.convert('LA')
+        i.thumbnail((26, 26))
+
+        #i.show()
 
         arr = np.asarray(i)
 
