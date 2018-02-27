@@ -27,4 +27,4 @@ def resize_img(pathname, store_pathname, validation_pathname, new_size, max_entr
                 break
 
 
-resize_img(os.getcwd() + '/train', os.getcwd() + '/train2',  os.getcwd() + '/validation2', [26, 26], max_entries=3000)
+resize_img(os.getcwd() + '/train', os.getcwd() + '/train2',  os.getcwd() + '/validation2', [26, 26], max_entries=20000)

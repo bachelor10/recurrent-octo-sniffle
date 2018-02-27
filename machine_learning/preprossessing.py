@@ -92,7 +92,6 @@ model.add(Flatten())
 
 # Fully connected layer
 model.add(Dense(512, activation="relu"))
-model.add(Activation('relu'))
 model.add(Dropout(0.2))
 model.add(Dense(39, activation="softmax"))
 
@@ -105,7 +104,7 @@ print("Fitting model")
 
 model.fit_generator(
         train_generator,
-        epochs=3,
+        epochs=1,
         validation_data=validation_generator,
         validation_steps=(10995 / 64),
 )

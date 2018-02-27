@@ -9,7 +9,7 @@ import os
 import sys
 
 
-IMG_RESOLUTION = 36
+IMG_RESOLUTION = 26
     
 classes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '=', '+']
 
@@ -327,6 +327,52 @@ class Equation:
         return (image, bounding_boxes)
 
 
+def continous_symbol_generator(limit=0):
+    count = 0
+    for file in os.listdir(os.getcwd() + '/data'):
+        if count > limit: break
+        if count%100 == 0: print('Count', count)
+        
+        full_filename = os.getcwd() + '/data/' + file
+        try:
+            tree = ET.parse(full_filename)
+        except:
+            print("Failed to parse tree")
+            continue
+
+        root = tree.getroot()
+
+        segments = find_segments(root)
+        full_truth = root.find('{http://www.w3.org/2003/InkML}annotation').text
+
+        images_with_truth = []
+        processed = dict()
+        for segment in segments:
+            image, truth, segment_id = segment.generate_bitmap()
+
+            start_index = 0
+            try:
+                start_index = processed[truth]
+            except:
+                pass
+            try: 
+                truth_index = full_truth.index(truth, start_index)
+            except:
+                continue
+
+            images_with_truth.append((image, truth, truth_index))
+
+            processed[truth] = truth_index + 1
+    
+        sorted_returnvalues = sorted(images_with_truth, key=lambda t: t[2])
+
+        for val in sorted_returnvalues:
+            yield (val[0], val[1])
+
+        count += 1
+
+
+
 
 def model_data_generator(limit=10000):
     count = 0
@@ -361,7 +407,5 @@ def model_data_generator(limit=10000):
     # generate_bitmap(segments[0])
 
 if __name__ == '__main__':
-    for img, box in model_data_generator(limit=1):
-        img.save("HOLA.png")
-        for col in np.asarray(img):
-            print(col)
+    for val in continous_symbol_generator(limit=10):
+        print(val[1])

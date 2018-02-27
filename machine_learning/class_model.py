@@ -366,7 +366,7 @@ class Predictor:
     MODEL_PATH = os.getcwd() + '/machine_learning/my_model.h5'
     #CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
-    CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
+    #CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
     CLASS_INDICES = {']': 17, 'z': 38, 'int': 23, 'sqrt': 32, '3': 7, 'infty': 22, 'neq': 27, '6': 10, '0': 4, '[': 16, '7': 11, '4': 8, '(': 0, 'x': 36, 'alpha': 18, 'lambda': 24, 'beta': 19, 'rightarrow': 30, '8': 12, ')': 1, '=': 14, 'y': 37, 'phi': 28, 'times': 35, '1': 5, 'lt': 25, 'Delta': 15, 'gamma': 20, '9': 13, 'pi': 29, '2': 6, 'sum': 33, 'theta': 34, 'mu': 26, '-': 3, 'gt': 21, '+': 2, 'sigma': 31, '5': 9}
 
     def __init__(self):
