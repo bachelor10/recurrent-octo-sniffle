@@ -104,9 +104,8 @@ print("Fitting model")
 
 model.fit_generator(
         train_generator,
-        epochs=1,
-        validation_data=validation_generator,
-        validation_steps=(10995 / 64),
+        epochs=3,
+        validation_data=validation_generator
 )
 
 print("Done!")
