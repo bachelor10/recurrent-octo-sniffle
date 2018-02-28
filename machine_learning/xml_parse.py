@@ -329,11 +329,11 @@ class Equation:
 
 def continous_symbol_generator(limit=0):
     count = 0
-    for file in os.listdir(os.getcwd() + '/data'):
+    for file in os.listdir(os.getcwd() + '/train'):
         if count > limit: break
         if count%100 == 0: print('Count', count)
         
-        full_filename = os.getcwd() + '/data/' + file
+        full_filename = os.getcwd() + '/train/' + file
         try:
             tree = ET.parse(full_filename)
         except:

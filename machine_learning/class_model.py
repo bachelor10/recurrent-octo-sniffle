@@ -220,6 +220,26 @@ class Expression:
         pass
 
 
+    def recursive_search_for_id(self, id, group):
+        
+        if type(group) == Fraction:
+            for g in group.numerator:
+                check = self.recursive_search_for_id(id, g)
+                if check:
+                    return True
+                
+            for g in group.denominator:
+                check = self.recursive_search_for_id(id, g)
+                if check:
+                    return True
+
+        elif type(group) == Regular:
+            if group.id == id:
+                return True
+            else:
+                return False
+
+
     def sort_id_list_x(self, ids):
         return [seg.id for seg in sorted([self.segments[id] for id in ids], key=lambda x: x.boundingbox.mid_x, reverse=False)]
     
@@ -255,31 +275,73 @@ class Expression:
             over = self.sort_id_list_x(over)
             under = self.sort_id_list_x(under)
 
-            over_objects = []
-            under_objects = []
+            over_objects_reg = []
+            over_objects_frac = []
+            under_objects_reg = []
+            under_objects_frac = []
 
             for over_id in over:
                 if over_id in ids:
-                    over_objects.append(self.fraction_search(over_id, ids, self.segments[id].boundingbox.mid_y - 1, self.segments[over_id].boundingbox.mid_y - 200))
+                    obj = self.fraction_search(over_id, ids, self.segments[id].boundingbox.mid_y - 1, self.segments[over_id].boundingbox.mid_y - 200)
+                    
+                    if type(obj) == Fraction:
+                        over_objects_frac.append(obj)
+                    elif type(obj) == Regular:
+                        over_objects_reg.append(obj)
+
+            # Check if any segments is doubled up
+            # Only a case for
+            for r in over_objects_reg:
+                check = False
+                for f in over_objects_frac:
+                    #Check if r can be found in any fractions
+                    if self.recursive_search_for_id(r.id, f):
+                        check = True
+
+                if check:
+                    # Remove r from over_object_reg
+
+                    over_objects_reg.remove(r)
+
                 
             for over_id in over:
                 if over_id not in self.processed:
                     mid_r = self.segments[over_id].boundingbox.mid_x
                     reg = Regular(over_id, mid_r)
-                    over_objects.append(reg)
+                    over_objects_reg.append(reg)
 
             for under_id in under:
                 if under_id in ids:
-                    under_objects.append(self.fraction_search(under_id, ids, self.segments[under_id].boundingbox.mid_y + 200, self.segments[id].boundingbox.mid_y + 1))
+                    obj = self.fraction_search(under_id, ids, self.segments[under_id].boundingbox.mid_y + 200, self.segments[id].boundingbox.mid_y + 1)
+                    if type(obj) == Fraction:
+                        under_objects_frac.append(obj)
+                    elif type(obj) == Regular:
+                        under_objects_reg.append(obj)
+            
+
+            for r in under_objects_reg:
+                check = False
+                for f in under_objects_frac:
+                    #Check if r can be found in any fractions
+                    if self.recursive_search_for_id(r.id, f):
+                        check = True
+            
+                if check:
+                    # Remove r from over_object_reg
+                    over_objects_reg.remove(r)
 
             for under_id in under:
                 if under_id not in self.processed:
                     mid_r = self.segments[under_id].boundingbox.mid_x
                     reg = Regular(under_id, mid_r)
-                    under_objects.append(reg)
+                    under_objects_reg.append(reg)
 
             self.processed = self.processed + over + under + [id]
             self.segments[id].truth = 'frac'
+
+
+            over_objects = over_objects_reg + over_objects_frac
+            under_objects = under_objects_reg + under_objects_frac
 
             over_objects.sort(key=lambda group: group.mid_x, reverse=False)
             under_objects.sort(key=lambda group: group.mid_x, reverse=False)
@@ -287,12 +349,20 @@ class Expression:
             # return a Fraction
             mid = self.segments[id].boundingbox.mid_x
             fraction = Fraction(over_objects, under_objects, mid)
+
+
+            print('Found fraction, info:', id, [i.id for i in fraction.numerator if type(i) == Regular], [i.id for i in fraction.denominator if type(i) == Regular])
+
+            print('Processed:', self.processed)
+
             return fraction
             
         else:
             # return a Regular 
             self.processed.append(id)
             regular = Regular(id, self.segments[id].boundingbox.mid_x)
+            print('Found regular, info:', id)
+            print('Processed:', self.processed)
             return regular
 
     
@@ -370,9 +440,7 @@ class Expression:
         
         # Check if minus signs is fractions
 
-        print(minus_ids)
         sorted_minus_ids = self.sort_ids_by_width(minus_ids)
-        print(sorted_minus_ids)
         self.find_fractions(sorted_minus_ids)
 
 
@@ -409,8 +477,6 @@ class Expression:
 
         num_latex = ''
         den_latex = ''
-
-        print(frac)
 
         for group in frac.numerator:
             if type(group) is Fraction:

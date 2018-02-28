@@ -80,20 +80,18 @@ model.add(Dropout(0.5))
 model.add(Dense(13, activation='softmax'))
 """
 model = Sequential()
-model.add(Conv2D(32, (3, 3), input_shape=(26,26,1), activation="relu"))
-model.add(Conv2D(32, (3, 3), activation="relu"))
+model.add(Conv2D(32, (3, 3), input_shape=(26,26,1), activation='relu'))
+model.add(Conv2D(32, (3, 3), activation='relu'))
 model.add(MaxPooling2D(pool_size=(2,2)))
 
-model.add(Conv2D(64,(3, 3), activation="relu"))
-model.add(Conv2D(64, (3, 3), activation="relu"))
-model.add(MaxPooling2D(pool_size=(2,2)))
 model.add(Dropout(0.25))
 model.add(Flatten())
 
 # Fully connected layer
-model.add(Dense(512, activation="relu"))
+model.add(Dense(512, activation='sigmoid'))
 model.add(Dropout(0.5))
-model.add(Dense(39, activation="softmax"))
+model.add(Dense(39))
+model.add(Activation('softmax'))
 
 print("Compiling model")
 
@@ -104,7 +102,7 @@ print("Fitting model")
 
 model.fit_generator(
         train_generator,
-        epochs=3,
+        epochs=10,
         validation_data=validation_generator
 )
 

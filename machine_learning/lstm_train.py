@@ -1,3 +1,5 @@
+
+
 import keras
 from keras.models import Sequential
 from keras.layers import Conv2D, MaxPooling2D, BatchNormalization, Activation, Dense, Flatten, Dropout, LSTM, Embedding
@@ -38,7 +40,6 @@ def predict_classes(imgs):
 
 def store_train_data(limit=1000):
     p_data, t_data = generate_train_data(limit=limit)
-
     print("P_DATA shape", np.asarray(p_data).shape)
     predicted = predict_classes(np.asarray(p_data))
 
@@ -69,7 +70,7 @@ def create_model():
     return model
 
 def run_model():
-    trainX, trainY = store_train_data(limit=5000)
+    trainX, trainY = store_train_data(limit=2500)
     print("Shape before", trainX.shape)
     #trainX = np.asarray([trainX])
     print("X shape", trainX.shape)
@@ -92,17 +93,20 @@ def find_truth(prediction):
             return key
 #run_model()
 
-
+ 
 lstm_mod = keras.models.load_model(os.getcwd() + '/lstm_model.h5')
-pred_res, truth = store_train_data(limit=1)
+pred_res, truth = store_train_data(limit=5)
 actual_truth = [find_truth(pred) for pred in truth]
 cnn_truths = [find_truth(pred) for pred in pred_res]
+for pred in pred_res:
+    print(pred)
+
 p = np.array(pred_res)
+
 for a in p: print(a)
 predictions = lstm_mod.predict_proba(p)
 lstm_truths = [find_truth(pred) for pred in predictions]
-"""
+
 print("Actual truth", actual_truth)
 print("CNN truths", cnn_truths)
 print("LSTM truths", lstm_truths)
-"""
