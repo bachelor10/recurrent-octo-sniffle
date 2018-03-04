@@ -109,6 +109,14 @@ ENV/
 /machine_learning/train/
 /machine_learning/preview/
 /machine_learning/train2/
+/machine_learning/train2-old/
 /machine_learning/validation2/
+/machine_learning/validation2-old/
 /machine_learning/my_model.h5
+/machine_learning/visualization/
 .vscode/settings.json
+my_model.h5
+machine_learning/lstm_model.h5
+
+truths.csv
+predictions.csv

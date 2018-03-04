@@ -318,7 +318,7 @@ class Expression:
                     elif type(obj) == Regular:
                         under_objects_reg.append(obj)
             
-
+            
             for r in under_objects_reg:
                 check = False
                 for f in under_objects_frac:
@@ -636,6 +636,7 @@ class Predictor:
         i.thumbnail((26, 26))
 
         #i.show()
+        #i.save(os.getcwd() + '/machine_learning/visualization/' + str(uuid.uuid4()) + '.png')
 
         arr = np.asarray(i)
 
