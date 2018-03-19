@@ -1,7 +1,17 @@
 .page-container {
     display: flex;
-    justify-content: center;
-    background-color: #F5F7F9;
+    background-color: #F5F7F9;,
+}
+.content-container {
+  flex-basis: 60%;
+  padding: 0 20px;
+
+}
+#graphContainer {
+  width: 30%;
+  margin-top: 100px;
+  padding: 0 20px;
+  height: 450px
 }
 
 #canvas {
@@ -35,6 +45,7 @@
 .sidebar-head {
     margin-top: 10px;
 }
+
 
 @-webkit-keyframes rotating /* Safari and Chrome */ {
   to {
