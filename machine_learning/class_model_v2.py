@@ -1,5 +1,5 @@
 import math, keras
-from itertools import cycle
+from itertools import cycle, combinations
 import numpy as np
 from PIL import Image, ImageDraw
 
@@ -42,11 +42,12 @@ class Boundingbox:
 
 
 class Segment:
-    def __init__(self, id, truth, traces):
+    def __init__(self, id, truth, segment_type, traces):
         self.id = id
         self.traces = traces
         self.boundingbox = Boundingbox(traces)
         self.truth = truth
+        self.type = segment_type
 
     def to_latex(self):
         return self.truth
@@ -57,6 +58,8 @@ class Group:
         self.id = id
         self.traces = traces
         self.boundingbox = Boundingbox(traces)
+        self.truth = 'group'
+        self.type = 'group'
             
     def to_latex(self):
 
@@ -82,14 +85,18 @@ class Group:
             latex += '}'
 
         elif type(self) == Power:
-
-            for obj in self.base:
-                latex += obj.to_latex()
             
+            if type(self.base) == Segment:
+                latex += self.base.to_latex()
+            else:
+                latex += obj.to_latex()
             latex += '^{'
 
-            for obj in self.exponent:
+            if type(self.exponent) == Segment:
+                latex += self.exponent.to_latex()
+            else:
                 latex += obj.to_latex()
+
             
             latex += '}'
 
@@ -120,8 +127,16 @@ class Segmentgroup(Group):
 
         
 class Fraction(Group):
-    def __init__(self, id, mid_x, numerator, denominator):
-        super().__init__(id, mid_x)
+    def __init__(self, id, numerator, denominator, frac_traces):
+
+        traces = frac_traces
+        for obj in numerator:
+            traces += obj.traces
+
+        for obj in denominator:
+            traces += obj.traces
+
+        super().__init__(id, traces)
         self.numerator = numerator
         self.denominator = denominator
 
@@ -130,8 +145,25 @@ class Fraction(Group):
 
 
 class Power(Group):
-    def __init__(self, id, mid_x, base, exponent):
-        super().__init__(id, mid_x)
+    def __init__(self, id, base, exponent):
+
+        traces = []
+
+        if type(base) == Segment:
+            traces += base.traces
+        else:
+            for obj in base:
+                traces += obj.traces
+
+        if type(exponent) == Segment:
+            traces += exponent.traces
+        else:
+            for obj in exponent:
+                traces += obj.traces
+
+        traces += exponent.traces
+
+        super().__init__(id, traces)
         self.base = base
         self.exponent = exponent
 
@@ -144,7 +176,7 @@ class Root(Group):
 
         traces = root_traces
         for obj in core:
-            traces = traces + obj.traces
+            traces += obj.traces
             
         super().__init__(id, traces)
         self.core = core
@@ -181,10 +213,9 @@ class Expression:
             segment_traces = [traces[j] for j in list(group)]
             id = str(i)
 
-            predicted_truth = self.predictor.predict(segment_traces)
+            predicted_truth, predicted_type = self.predictor.predict(segment_traces)
 
-
-            segment = Segment(id, predicted_truth, segment_traces)
+            segment = Segment(id, predicted_truth, predicted_type, segment_traces)
             self.segments.append(segment)
 
         self.groups = self.recursive_search_for_context(self.segments, 10000, 0, 10000, 0)
@@ -192,9 +223,7 @@ class Expression:
 
     def recursive_search_for_context(self, objects, max_x, min_x, max_y, min_y):
         
-        groups = []
-
-        # Find all roots and sort them on width
+        # Find all roots and sort them by width
         roots = [obj for obj in objects if obj.truth == 'sqrt']
         roots = self.sort_objects_by_width(roots)
 
@@ -222,23 +251,20 @@ class Expression:
                 root_obj = Root(root.id, core, root.traces)
 
                 # Add to groups
-                groups.append(root_obj)
+                objects.append(root_obj)
                 
             else:
                 print('Empty root')
                 
                 root_obj = Root(root.id, [], root.traces)
-                groups.append(root_obj)
+                objects.append(root_obj)
                 
 
-        # Find all minus signs
+        # Find all minus signs and sort them by width
         minus_signs = [obj for obj in objects if obj.truth == '-']
-        minus_signs = self.sort_objects_by_width(roots)
-
-        print(minus_signs)
+        minus_signs = self.sort_objects_by_width(minus_signs)
 
         # Find fractions and context in numerator/denominator
-        '''
         for minus_sign in minus_signs:
 
             print('Found minus sign, checking for fraction')
@@ -250,20 +276,33 @@ class Expression:
                 objects.remove(minus_sign)
 
                 # Remove fraction objects found from objects
+                for obj in numerator:
+                    print(obj.id)
+                    if obj in minus_signs:
+                        minus_signs.remove(obj)
 
+                    if obj in objects:
+                        objects.remove(obj)
+
+                for obj in denominator:
+                    if obj in minus_signs:
+                        minus_signs.remove(obj)
+
+                    if obj in objects:
+                        objects.remove(obj)
                 
                 # Find context in numerator
-                
+                numerator = self.recursive_search_for_context(numerator, minus_sign.boundingbox.max_x, minus_sign.boundingbox.min_x, minus_sign.boundingbox.mid_y - 1, min_y)
 
                 # Find context in denominator
-
+                denominator = self.recursive_search_for_context(denominator, minus_sign.boundingbox.max_x, minus_sign.boundingbox.min_x, max_x, minus_sign.boundingbox.mid_y + 1)
 
                 # Create Fraction object
-
+                fraction = Fraction(minus_sign.id, numerator, denominator, minus_sign.traces)
                 
                 # Add to groups
-                
-        '''
+                objects.append(fraction)
+        
 
         # Find all integrals
 
@@ -272,18 +311,67 @@ class Expression:
 
 
         # Find equalsigns
-        
-        
-        # Add single segments outside any groups
-        groups = groups + objects
+        minus_signs = [obj for obj in objects if obj.truth == '-']
 
-        # Sort groups by mid_x value
-        groups = self.sort_objects_by_x_value(groups)
+        for pair in combinations(minus_signs, r=2):
+            print(pair[0].id, pair[1].id)
+            if self.check_if_equalsign(pair[0], pair[1]):
+                print('Found equalsign')
+                pair_processed = False
+                
+                # Remove from objects
+                if pair[0] in objects:
+                    objects.remove(pair[0])
+                else:
+                    pair_processed = True
+                
+                if pair[1] in objects:
+                    objects.remove(pair[1])
+                else:
+                    pair_processed = True
+
+                if not pair_processed:
+                    # Create equal object
+                    equal_obj = Segment(pair[0].id, '=', 'operator', pair[0].traces + pair[1].traces)
+
+                    # Add to objects
+                    objects.append(equal_obj)
+                
+        # Sort objects by x value
+        objects = self.sort_objects_by_x_value(objects)
 
         # Find exponents
+        obj_cycle = cycle(objects)
+        next(obj_cycle)
+
+        for base in objects[:-1]:
+            exp = next(obj_cycle)
+            
+            print(base.id, exp.id)
 
 
-        return groups
+            if base.type != 'operator' and base.type != 'special':
+                if self.check_if_exponent(base, exp):
+
+                    # Check if base is structure
+
+                    # If yes, find base-group
+
+                    # Check if exp is structure
+
+                    # If yes, find exp-group
+
+                    objects.remove(base)
+                    objects.remove(exp)
+
+                    power = Power(base.id, base, exp)
+
+                    objects.append(power)
+
+        # Sort objects by x value
+        objects = self.sort_objects_by_x_value(objects)
+
+        return objects
 
 
 
@@ -318,9 +406,47 @@ class Expression:
         denominator = self.find_objects_in_area(max_x, min_x, max_y, minus_sign.boundingbox.mid_y + 1, objects)
 
         if len(numerator) > 0 and len(denominator) > 0:
-            return False, numerator, denominator
-        else:
             return True, numerator, denominator
+        else:
+            return False, numerator, denominator
+    
+
+    def check_if_equalsign(self, minus_one, minus_two):
+        mid_x_one = minus_one.boundingbox.mid_x
+        mid_x_two = minus_two.boundingbox.mid_x
+        mid_y_one = minus_one.boundingbox.mid_y
+        mid_y_two = minus_two.boundingbox.mid_y
+        width_one = minus_one.boundingbox.width
+        width_two = minus_two.boundingbox.width
+
+        # Check if widths are similar
+        if np.abs(width_one - width_two) > (width_one + width_two)/2:
+            return False
+        
+        # Check if mid_x values are inside treshhold
+        if np.abs(mid_x_one - mid_x_two) > (width_one + width_two)/3:
+            return False
+        
+        # Check if mid_y values are inside treshhold
+        if np.abs(mid_y_one - mid_y_two) > (width_one + width_two)/2:
+            return False
+
+        return True
+
+
+    def check_if_exponent(self, base, exponent):
+        mid_y_base = base.boundingbox.min_y
+        max_y_exp = exponent.boundingbox.mid_y
+
+        # Check if mid_y values are inside treshhold
+        if max_y_exp > mid_y_base:
+            return False
+
+        
+
+        return True
+
+        
 
 
     def horizontal_search(self, start_object, max_x_diff):
@@ -449,7 +575,8 @@ class Preprocessor:
 
 class Predictor:
 
-    CLASS_INDICES = {']': 17, 'z': 38, 'int': 23, 'sqrt': 32, '3': 7, '\\infty': 22, 'neq': 27, '6': 10, '0': 4, '[': 16, '7': 11, '4': 8, '(': 0, 'x': 36, '\\alpha': 18, '\\lambda': 24, '\\beta': 19, '\\rightarrow': 30, '8': 12, ')': 1, '=': 14, 'y': 37, '\\phi': 28, '\\times': 35, '1': 5, '<': 25, '\\Delta': 15, '\\gamma': 20, '9': 13, '\\pi': 29, '2': 6, '\\sum': 33, '\\theta': 34, '\\mu': 26, '-': 3, '>': 21, '+': 2, '\\sigma': 31, '5': 9}
+    CLASS_INDICES = {']': 17, 'z': 38, 'int': 23, 'sqrt': 32, '3': 7, '\\infty': 22, '\\neq': 27, '6': 10, '0': 4, '[': 16, '7': 11, '4': 8, '(': 0, 'x': 36, '\\alpha': 18, '\\lambda': 24, '\\beta': 19, '\\rightarrow': 30, '8': 12, ')': 1, '=': 14, 'y': 37, '\\phi': 28, '\\times': 35, '1': 5, '<': 25, '\\Delta': 15, '\\gamma': 20, '9': 13, '\\pi': 29, '2': 6, '\\sum': 33, '\\theta': 34, '\\mu': 26, '-': 3, '>': 21, '+': 2, '\\sigma': 31, '5': 9}
+    CLASS_TYPES = {']': 'structure', 'z': 'var', 'int': 'special', 'sqrt': 'special', '3': 'num', '\\infty': 'num', '\\neq': 'operator', '6': 'num', '0': 'num', '[': 'structure', '7': 'num', '4': 'num', '(': 'structure', 'x': 'var', '\\alpha': 'var', '\\lambda': 'var', '\\beta': 'var', '\\rightarrow': 'operator', '8': 'num', ')': 'structure', '=': 'operator', 'y': 'var', '\\phi': 'var', '\\times': 'operator', '1': 'num', '<': 'operator', '\\Delta': 'var', '\\gamma': 'var', '9': 'num', '\\pi': 'var', '2': 'num', '\\sum': 'special', '\\theta': 'var', '\\mu': 'var', '-': 'operator', '>': 'operator', '+': 'operator', '\\sigma': 'var', '5': 'num'}
 
     def __init__(self, model_path):
         self.model = keras.models.load_model(model_path)
@@ -462,7 +589,7 @@ class Predictor:
         proba_index = np.argmax(truth_proba[0])
         for key, value in Predictor.CLASS_INDICES.items():
             if value == proba_index:
-                return key
+                return key, Predictor.CLASS_TYPES[key]
 
 
     def scale_linear_bycolumn(self, rawpoints, high=24, low=0, ma=0, mi=0):

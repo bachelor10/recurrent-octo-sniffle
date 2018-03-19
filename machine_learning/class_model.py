@@ -171,9 +171,9 @@ class Expression:
                             overlap_pairs.add((i, i+j+1))
 
                 # Check lines between endpoints
-                overlap = intersect.intersect(trace[0], trace[-1], trace2[0], trace2[-1])
-                if(overlap):
-                    overlap_pairs.add((i, i+j+1))
+                #overlap = intersect.intersect(trace[0], trace[-1], trace2[0], trace2[-1])
+                #if(overlap):
+                #    overlap_pairs.add((i, i+j+1))
         
         return overlap_pairs
 
@@ -493,7 +493,7 @@ class Expression:
         return '\\frac{' + num_latex + '}{' + den_latex + '}'
 
 
-    def get_latex(self):
+    def to_latex(self):
         latex = ''
         for group in self.groups:
             if type(group) is Fraction:
@@ -511,15 +511,15 @@ class Expression:
 
 
 class Predictor:
-    MODEL_PATH = os.getcwd() + '/machine_learning/my_model.h5'
-    #MODEL_PATH = os.getcwd() + '/machine_learning/new_model.h5'
+    MODEL_PATH = os.getcwd() + '/machine_learning/my_model_1tanh_2.h5'
+    #MODEL_PATH = os.getcwd() + '/my_model_1tanh_2.h5'
     #print(os.listdir(os.getcwd() + '/machine_learning' + '/train'))
     CLASSES = ['+', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=']
     #CLASSES = os.listdir(os.getcwd() + '/machine_learning' + '/train')    
     #CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
 
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
-    CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
+    #CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
     CLASS_INDICES = {']': 17, 'z': 38, 'int': 23, 'sqrt': 32, '3': 7, '\\infty': 22, 'neq': 27, '6': 10, '0': 4, '[': 16, '7': 11, '4': 8, '(': 0, 'x': 36, '\\alpha': 18, '\\lambda': 24, '\\beta': 19, '\\rightarrow': 30, '8': 12, ')': 1, '=': 14, 'y': 37, '\\phi': 28, '\\times': 35, '1': 5, '<': 25, '\\Delta': 15, '\\gamma': 20, '9': 13, '\\pi': 29, '2': 6, '\\sum': 33, '\\theta': 34, '\\mu': 26, '-': 3, '>': 21, '+': 2, '\\sigma': 31, '5': 9}
 
     #{'gamma': 20, 'pi': 29, 'sum': 33, 'int': 23, 'theta': 34, '9': 13, 'lt': 25, '4': 8, 'times': 35, '5': 9, '(': 0, 'infty': 22, 'rightarrow': 30, 'neq': 27, 'gt': 21, '+': 2, '2': 6, '-': 3, '7': 11, 'sqrt': 32, ')': 1, '8': 12, 'beta': 19, 'y': 37, 'z': 38, '[': 16, '6': 10, 'x': 36, '=': 14, 'alpha': 18, 'mu': 26, 'sigma': 31, '0': 4, ']': 17, '3': 7, '1': 5, 'lambda': 24, 'Delta': 15, 'phi': 28}
@@ -531,11 +531,11 @@ class Predictor:
     def predict(self, segment_traces):
         start = time()
         processed = self.pre_process(segment_traces)
-        print("Preprocess time", str(time() - start) + "ms")
+        print("Preprocess time", str(time() - start) + "s")
         start = time()
         output = self.model.predict_proba(processed)
         print("Predicted", output)
-        print("Predict Time", str(time() - start) + "ms")
+        print("Predict Time", str(time() - start) + "s")
         
         proba_index = np.argmax(output[0])
         for key, value in Predictor.CLASS_INDICES.items():
@@ -563,8 +563,8 @@ class Predictor:
         return output
 
     def pre_process(self, traces):
-        resolution = 45
-        image_resolution = 45
+        resolution = 26
+        image_resolution = 26
 
         image = Image.new('L', (image_resolution, image_resolution), "white")
         draw = ImageDraw.Draw(image)
@@ -631,24 +631,7 @@ class Predictor:
                 next_coord = next(xy_cycle)
                 draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
 
-
-        i = image.convert('LA')
-        i.thumbnail((26, 26))
-
-        #i.show()
-        #i.save(os.getcwd() + '/machine_learning/visualization/' + str(uuid.uuid4()) + '.png')
-
-        arr = np.asarray(i)
-
-        formatted = []
-        for row in arr:
-            new_row = []
-            for col in row:
-                new_row.append(col[0])
-
-            formatted.append(new_row)
-
-        return np.asarray([np.asarray(formatted).reshape((26, 26, 1))])
+        return np.asarray([np.asarray(image).reshape((26, 26, 1))])
 
 if __name__ == '__main__':
 

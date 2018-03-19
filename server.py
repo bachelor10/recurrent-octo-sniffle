@@ -1,5 +1,5 @@
 from tornado import websocket, web, ioloop
-from machine_learning.class_model import Expression, Predictor
+from machine_learning.class_model_v2 import Expression, Predictor
 import os, uuid, json, base64_converter
 from time import time
 class Client:
@@ -51,7 +51,7 @@ def find_client_with_request_data(data):
 
 clients = dict()
 
-predictor = Predictor()
+predictor = Predictor(os.getcwd() + '/machine_learning/my_model_1tanh_2.h5')
 
 class WebSocket(websocket.WebSocketHandler):
     def open(self):
@@ -84,10 +84,9 @@ class WebSocket(websocket.WebSocketHandler):
                     startExpression = time()
                     expression = Expression(predictor)
                     expression.feed_traces(buffer_correct)
-                    expression.classify_segments()
 
-                    latex = expression.get_latex()
-                    print("Total duration", str(time() - start) + "ms")
+                    latex = expression.to_latex()
+                    print("Total duration", str(time() - start) + "s")
                     self.write_message(latex)
 
 
