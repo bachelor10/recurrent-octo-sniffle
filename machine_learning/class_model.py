@@ -96,8 +96,9 @@ class Trace:
 
 
 class Segment:
-    def __init__(self, traces, id, truth=''):
+    def __init__(self, traces, id, tracegroup, truth='', ):
         self.traces = traces
+        self.tracegroup = tracegroup
         self.boundingbox = Boundingbox(traces)
         self.id = id
         self.truth = truth
@@ -188,7 +189,7 @@ class Expression:
         for i, group in enumerate(tracegroups):
             traces_for_segment = [traces[j] for j in list(group)]
             id = str(i)
-            segment = Segment(traces_for_segment, id)
+            segment = Segment(traces_for_segment, id, group)
             self.segments[id] = segment
 
 
@@ -199,7 +200,7 @@ class Expression:
         traces = segment1.traces + segment2.traces
         id = segment1.id
 
-        new_segment = Segment(traces, id, truth)
+        new_segment = Segment(traces, id, [], truth)
         self.segments[id] = new_segment
         
     
@@ -432,8 +433,12 @@ class Expression:
     def classify_segments(self):
 
         minus_ids = []
+        probabilites = []
         for id, segment in self.segments.items():
-            segment.truth = self.predictor.predict(segment.traces)
+            truth, proba = self.predictor.predict(segment.traces)
+            proba['tracegroup'] = segment.tracegroup
+            probabilites.append(proba)
+            segment.truth = truth
 
             if segment.truth == '-':
                 minus_ids.append(segment.id)
@@ -463,6 +468,8 @@ class Expression:
         
         # Sort groups
         self.sort_groups()
+
+        return probabilites
 
 
     def create_segmentgroups(self):
@@ -511,7 +518,7 @@ class Expression:
 
 
 class Predictor:
-    MODEL_PATH = os.getcwd() + '/machine_learning/my_model.h5'
+    MODEL_PATH = os.getcwd() + '/machine_learning/my_model_1tanh_2.h5'
     #MODEL_PATH = os.getcwd() + '/machine_learning/new_model.h5'
     #print(os.listdir(os.getcwd() + '/machine_learning' + '/train'))
     CLASSES = ['+', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=']
@@ -519,7 +526,7 @@ class Predictor:
     #CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
 
     #MODEL_PATH = os.getcwd() + '/my_model.h5'
-    CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
+    #CLASSES = os.listdir(os.getcwd() + '/machine_learning/train2')
     CLASS_INDICES = {']': 17, 'z': 38, 'int': 23, 'sqrt': 32, '3': 7, '\\infty': 22, 'neq': 27, '6': 10, '0': 4, '[': 16, '7': 11, '4': 8, '(': 0, 'x': 36, '\\alpha': 18, '\\lambda': 24, '\\beta': 19, '\\rightarrow': 30, '8': 12, ')': 1, '=': 14, 'y': 37, '\\phi': 28, '\\times': 35, '1': 5, '<': 25, '\\Delta': 15, '\\gamma': 20, '9': 13, '\\pi': 29, '2': 6, '\\sum': 33, '\\theta': 34, '\\mu': 26, '-': 3, '>': 21, '+': 2, '\\sigma': 31, '5': 9}
 
     #{'gamma': 20, 'pi': 29, 'sum': 33, 'int': 23, 'theta': 34, '9': 13, 'lt': 25, '4': 8, 'times': 35, '5': 9, '(': 0, 'infty': 22, 'rightarrow': 30, 'neq': 27, 'gt': 21, '+': 2, '2': 6, '-': 3, '7': 11, 'sqrt': 32, ')': 1, '8': 12, 'beta': 19, 'y': 37, 'z': 38, '[': 16, '6': 10, 'x': 36, '=': 14, 'alpha': 18, 'mu': 26, 'sigma': 31, '0': 4, ']': 17, '3': 7, '1': 5, 'lambda': 24, 'Delta': 15, 'phi': 28}
@@ -537,19 +544,26 @@ class Predictor:
         print("Predicted", output)
         print("Predict Time", str(time() - start) + "ms")
         
-        proba_index = np.argmax(output[0])
-        for key, value in Predictor.CLASS_INDICES.items():
-            if value == proba_index:
-                return key
-        """
-        for i, p in enumerate(output[0]):
+        bestProbabilites = np.argsort(output[0])[::-1][:6]
 
-            if p > best_pred[1]:
-                best_pred = (i, p)
-                Predictor.CLASS_INDICES
-                prediction = Predictor.CLASSES[i]
-        """
-        #return prediction
+
+        labels = []
+        values = []
+        truth = ''
+        for i, index in enumerate(bestProbabilites):
+            for key, value in Predictor.CLASS_INDICES.items():
+                if value == index:
+                    if i == 0:
+                        truth = key
+
+                    labels.append(key)
+                    values.append(float(output[0][index]))
+
+
+        return truth, {
+            'labels': labels, 
+            'values': values
+        }
         
     #https://gist.github.com/perrygeo/4512375
     def scale_linear_bycolumn(self, rawpoints, high=24, low=0, ma=0, mi=0):
@@ -563,8 +577,8 @@ class Predictor:
         return output
 
     def pre_process(self, traces):
-        resolution = 45
-        image_resolution = 45
+        resolution = 26
+        image_resolution = 26
 
         image = Image.new('L', (image_resolution, image_resolution), "white")
         draw = ImageDraw.Draw(image)
@@ -632,22 +646,8 @@ class Predictor:
                 draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
 
 
-        i = image.convert('LA')
-        i.thumbnail((26, 26))
+        return np.array(image).reshape(1, 26, 26, 1)
 
-        #i.show()
-
-        arr = np.asarray(i)
-
-        formatted = []
-        for row in arr:
-            new_row = []
-            for col in row:
-                new_row.append(col[0])
-
-            formatted.append(new_row)
-
-        return np.asarray([np.asarray(formatted).reshape((26, 26, 1))])
 
 if __name__ == '__main__':
 

@@ -1,6 +1,7 @@
 from tornado import websocket, web, ioloop
 from machine_learning.class_model import Expression, Predictor
-import os, uuid, json, base64_converter
+import os, uuid, base64_converter
+import simplejson as json
 from time import time
 class Client:
     def __init__(self, uuid, current_equation):
@@ -84,11 +85,15 @@ class WebSocket(websocket.WebSocketHandler):
                     startExpression = time()
                     expression = Expression(predictor)
                     expression.feed_traces(buffer_correct)
-                    expression.classify_segments()
+                    probabilites = expression.classify_segments()
 
+                    print("Proba", probabilites)
                     latex = expression.get_latex()
                     print("Total duration", str(time() - start) + "ms")
-                    self.write_message(latex)
+                    self.write_message(json.dumps({
+                        'latex': latex,
+                        'probabilites': probabilites
+                    }, use_decimal=True))
 
 
                     #client.buffer = []
@@ -138,30 +143,36 @@ class rest_handler(web.RequestHandler):
         self.write(json.dumps(data))
 
     def post(self):
-        # Extract UUID
-        client_id = self.get_body_argument("uuid")
-        print(self.__str__())
-        # Find client in set
-        client = find_client(client_id)
+        print("Running prediction")
+        body = json.loads(self.request.body)
+        buffer = body['buffer']
 
-        # Extract image and save image
-        # TODO handle NONETYPE
-        #base64_converter.convertToImg(self.get_body_argument("b64_str"), client.current_equation)
+        buffer_array = []
 
-        # Send client buffer to db
+        for i, trace in enumerate(buffer):
+            buffer_array.append([])
 
-        # Reset buffer
+            for coords in trace:
+                buffer_array[i].append([int(coords['x1']), int(coords['y1'])])
 
-        # Get an equation from db
-        equation = '4 - 1 = 3'
-        client.current_equation = equation
 
-        # Send equation to client
-        data = {
-            'equation': equation
-        }
+        start = time()
+        buffer_correct = [i for i in buffer_array if i != []]
+        startExpression = time()
+        expression = Expression(predictor)
 
-        self.write(json.dumps(data))
+        expression.feed_traces(buffer_correct)
+        probabilites = expression.classify_segments()
+
+        print("Proba", probabilites)
+        latex = expression.get_latex()
+        print("Total duration", str(time() - start) + "ms")
+        self.write(json.dumps({
+            'latex': latex,
+            'probabilites': probabilites
+        }, use_decimal=True))
+
+        #self.write(json.dumps(data))
 
 
 class IndexHandler(web.RequestHandler):
