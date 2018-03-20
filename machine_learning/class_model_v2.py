@@ -86,17 +86,13 @@ class Group:
 
         elif type(self) == Power:
             
-            if type(self.base) == Segment:
-                latex += self.base.to_latex()
-            else:
+            for obj in self.base:   
                 latex += obj.to_latex()
+
             latex += '^{'
-
-            if type(self.exponent) == Segment:
-                latex += self.exponent.to_latex()
-            else:
+            
+            for obj in self.exponent:
                 latex += obj.to_latex()
-
             
             latex += '}'
 
@@ -149,19 +145,11 @@ class Power(Group):
 
         traces = []
 
-        if type(base) == Segment:
-            traces += base.traces
-        else:
-            for obj in base:
-                traces += obj.traces
+        for obj in base: 
+            traces += obj.traces
 
-        if type(exponent) == Segment:
-            traces += exponent.traces
-        else:
-            for obj in exponent:
-                traces += obj.traces
-
-        traces += exponent.traces
+        for obj in exponent:
+            traces += obj.traces
 
         super().__init__(id, traces)
         self.base = base
@@ -209,16 +197,23 @@ class Expression:
         overlap_pairs = self.preprocessor.find_overlap_pairs(traces)
         tracegroups = self.preprocessor.create_tracegroups(traces, overlap_pairs)
         
+        probabilities = []
+
         for i, group in enumerate(tracegroups):
             segment_traces = [traces[j] for j in list(group)]
             id = str(i)
 
-            predicted_truth, predicted_type = self.predictor.predict(segment_traces)
+            predicted_truth, proba, predicted_type = self.predictor.predict(segment_traces)
+
+            proba['tracegroup'] = group
+            probabilities.append(proba)
 
             segment = Segment(id, predicted_truth, predicted_type, segment_traces)
             self.segments.append(segment)
 
         self.groups = self.recursive_search_for_context(self.segments, 10000, 0, 10000, 0)
+
+        return probabilities
 
 
     def recursive_search_for_context(self, objects, max_x, min_x, max_y, min_y):
@@ -340,34 +335,51 @@ class Expression:
         # Sort objects by x value
         objects = self.sort_objects_by_x_value(objects)
 
-        # Find exponents
-        obj_cycle = cycle(objects)
-        next(obj_cycle)
+         # Find exponents
 
-        for base in objects[:-1]:
-            exp = next(obj_cycle)
-            
-            print(base.id, exp.id)
+        looking_for_exponents = True
 
+        while looking_for_exponents:
 
-            if base.type != 'operator' and base.type != 'special':
-                if self.check_if_exponent(base, exp):
+            obj_cycle = cycle(objects)
+            next(obj_cycle)
 
-                    # Check if base is structure
+            found_exponent = False
 
-                    # If yes, find base-group
+            for base in objects[:-1]:
+                exp = next(obj_cycle)
 
-                    # Check if exp is structure
+                if base.type != 'operator' and base.type != 'special':
+                    if self.check_if_exponent(base, exp):
 
-                    # If yes, find exp-group
+                        # Check if base is structure
 
-                    objects.remove(base)
-                    objects.remove(exp)
+                        # If yes, find base-group
 
-                    power = Power(base.id, base, exp)
+                        # Check if exp is structure
 
-                    objects.append(power)
+                        # If yes, find exp-group
 
+                        objects.remove(base)
+                        objects.remove(exp)
+
+                        obj_base = []
+                        obj_exp = []
+
+                        obj_base.append(base)
+                        obj_exp.append(exp)
+
+                        power = Power(base.id, obj_base, obj_exp)
+
+                        objects.insert(0, power)
+
+                        objects = self.sort_objects_by_x_value(objects)
+
+                        found_exponent = True
+
+            if not found_exponent:
+                break
+    
         # Sort objects by x value
         objects = self.sort_objects_by_x_value(objects)
 
@@ -476,8 +488,9 @@ class Expression:
     def to_latex(self):
         latex = ''
         for group in self.groups:
+            
             latex += group.to_latex()
-
+            
         return latex
 
 
@@ -586,10 +599,26 @@ class Predictor:
         input_image = self.create_image(segment_traces)
         truth_proba = self.model.predict_proba(input_image)
 
-        proba_index = np.argmax(truth_proba[0])
-        for key, value in Predictor.CLASS_INDICES.items():
-            if value == proba_index:
-                return key, Predictor.CLASS_TYPES[key]
+        bestProbabilites = np.argsort(truth_proba[0])[::-1][:6]
+
+        labels = []
+        values = []
+        truth = ''
+
+        for i, index in enumerate(bestProbabilites):
+            for key, value in Predictor.CLASS_INDICES.items():
+                if value == index:
+                    if i == 0:
+                        truth = key
+                        type_truth = Predictor.CLASS_TYPES[key]
+                    
+                    labels.append(key)
+                    values.append(float(truth_proba[0][index]))
+
+        return truth, {
+            'labels': labels,
+            'values': values
+        }, type_truth
 
 
     def scale_linear_bycolumn(self, rawpoints, high=24, low=0, ma=0, mi=0):
@@ -671,7 +700,9 @@ class Predictor:
                 next_coord = next(xy_cycle)
                 draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
 
-        return np.asarray([np.asarray(image).reshape((26, 26, 1))])
+        #return np.asarray([np.asarray(image).reshape((26, 26, 1))])
+        return np.array(image).reshape(1, 26, 26, 1)
+
 
 def main():
     s1 = Segment(0, '1')

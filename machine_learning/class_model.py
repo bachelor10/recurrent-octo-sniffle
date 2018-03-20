@@ -96,8 +96,9 @@ class Trace:
 
 
 class Segment:
-    def __init__(self, traces, id, truth=''):
+    def __init__(self, traces, id, tracegroup, truth='', ):
         self.traces = traces
+        self.tracegroup = tracegroup
         self.boundingbox = Boundingbox(traces)
         self.id = id
         self.truth = truth
@@ -188,7 +189,7 @@ class Expression:
         for i, group in enumerate(tracegroups):
             traces_for_segment = [traces[j] for j in list(group)]
             id = str(i)
-            segment = Segment(traces_for_segment, id)
+            segment = Segment(traces_for_segment, id, group)
             self.segments[id] = segment
 
 
@@ -199,7 +200,7 @@ class Expression:
         traces = segment1.traces + segment2.traces
         id = segment1.id
 
-        new_segment = Segment(traces, id, truth)
+        new_segment = Segment(traces, id, [], truth)
         self.segments[id] = new_segment
         
     
@@ -432,8 +433,12 @@ class Expression:
     def classify_segments(self):
 
         minus_ids = []
+        probabilites = []
         for id, segment in self.segments.items():
-            segment.truth = self.predictor.predict(segment.traces)
+            truth, proba = self.predictor.predict(segment.traces)
+            proba['tracegroup'] = segment.tracegroup
+            probabilites.append(proba)
+            segment.truth = truth
 
             if segment.truth == '-':
                 minus_ids.append(segment.id)
@@ -463,6 +468,8 @@ class Expression:
         
         # Sort groups
         self.sort_groups()
+
+        return probabilites
 
 
     def create_segmentgroups(self):
@@ -512,7 +519,7 @@ class Expression:
 
 class Predictor:
     MODEL_PATH = os.getcwd() + '/machine_learning/my_model_1tanh_2.h5'
-    #MODEL_PATH = os.getcwd() + '/my_model_1tanh_2.h5'
+    #MODEL_PATH = os.getcwd() + '/machine_learning/new_model.h5'
     #print(os.listdir(os.getcwd() + '/machine_learning' + '/train'))
     CLASSES = ['+', '-', '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '=']
     #CLASSES = os.listdir(os.getcwd() + '/machine_learning' + '/train')    
@@ -537,19 +544,26 @@ class Predictor:
         print("Predicted", output)
         print("Predict Time", str(time() - start) + "s")
         
-        proba_index = np.argmax(output[0])
-        for key, value in Predictor.CLASS_INDICES.items():
-            if value == proba_index:
-                return key
-        """
-        for i, p in enumerate(output[0]):
+        bestProbabilites = np.argsort(output[0])[::-1][:6]
 
-            if p > best_pred[1]:
-                best_pred = (i, p)
-                Predictor.CLASS_INDICES
-                prediction = Predictor.CLASSES[i]
-        """
-        #return prediction
+
+        labels = []
+        values = []
+        truth = ''
+        for i, index in enumerate(bestProbabilites):
+            for key, value in Predictor.CLASS_INDICES.items():
+                if value == index:
+                    if i == 0:
+                        truth = key
+
+                    labels.append(key)
+                    values.append(float(output[0][index]))
+
+
+        return truth, {
+            'labels': labels, 
+            'values': values
+        }
         
     #https://gist.github.com/perrygeo/4512375
     def scale_linear_bycolumn(self, rawpoints, high=24, low=0, ma=0, mi=0):
@@ -631,7 +645,9 @@ class Predictor:
                 next_coord = next(xy_cycle)
                 draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
 
-        return np.asarray([np.asarray(image).reshape((26, 26, 1))])
+
+        return np.array(image).reshape(1, 26, 26, 1)
+
 
 if __name__ == '__main__':
 

@@ -109,8 +109,10 @@ ENV/
 /machine_learning/train/
 /machine_learning/preview/
 /machine_learning/train2/
+/machine_learning/train3/
 /machine_learning/train2-old/
 /machine_learning/validation2/
+/machine_learning/validation3/
 /machine_learning/validation2-old/
 /machine_learning/my_model.h5
 /machine_learning/visualization/
