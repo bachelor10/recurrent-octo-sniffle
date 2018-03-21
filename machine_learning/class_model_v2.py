@@ -336,50 +336,55 @@ class Expression:
         objects = self.sort_objects_by_x_value(objects)
 
          # Find exponents
-
         looking_for_exponents = True
 
         while looking_for_exponents:
 
-            obj_cycle = cycle(objects)
-            next(obj_cycle)
-
             found_exponent = False
 
-            for base in objects[:-1]:
-                exp = next(obj_cycle)
+            for i, base in enumerate(objects[:-1]):
 
+                # Operators and special signs should not have exponents         
                 if base.type != 'operator' and base.type != 'special':
-                    if self.check_if_exponent(base, exp):
 
-                        # Check if base is structure
+                    obj_base = []
+                    obj_exp = []
 
-                        # If yes, find base-group
+                    # Search for exponent for current base
+                    for exp in objects[i+1:]:
+                        if self.check_if_exponent(base, exp):
+                            obj_exp.append(exp)
+                        else:
+                            # Break out of loop when the sequence of exponents is broken for the first time
+                            break
 
-                        # Check if exp is structure
+                    # Check if any exponent were found for current base
+                    if len(obj_exp) > 0:
+                        # Update objects
+                        objects = [i for i in objects if i not in obj_exp]
 
-                        # If yes, find exp-group
+                        # Look for context in exponent group
+                        obj_exp = self.recursive_search_for_context(obj_exp, max_x, min_x, max_y, min_y)
 
                         objects.remove(base)
-                        objects.remove(exp)
-
-                        obj_base = []
-                        obj_exp = []
-
                         obj_base.append(base)
-                        obj_exp.append(exp)
-
+                        
+                        # Create and add power group to objects
                         power = Power(base.id, obj_base, obj_exp)
-
                         objects.insert(0, power)
-
                         objects = self.sort_objects_by_x_value(objects)
 
                         found_exponent = True
+                
+                # If any exponent were found, restart the for loop
+                if found_exponent:
+                    break
 
+            # Continue if no exponent were found
             if not found_exponent:
                 break
-    
+        
+
         # Sort objects by x value
         objects = self.sort_objects_by_x_value(objects)
 
@@ -454,11 +459,7 @@ class Expression:
         if max_y_exp > mid_y_base:
             return False
 
-        
-
         return True
-
-        
 
 
     def horizontal_search(self, start_object, max_x_diff):
