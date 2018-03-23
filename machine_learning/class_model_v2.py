@@ -218,6 +218,38 @@ class Expression:
 
     def recursive_search_for_context(self, objects, max_x, min_x, max_y, min_y):
         
+        objects = self.find_roots(objects)               
+        objects = self.find_fractions(objects, max_x, min_x, max_y, min_y)        
+        objects = self.find_equalsigns(objects)
+        objects = self.sort_objects_by_x_value(objects)
+        objects = self.find_exponents(objects, max_x, min_x, max_y, min_y)
+        objects = self.sort_objects_by_x_value(objects)
+
+        return objects
+
+
+    def find_objects_in_area(self, max_x, min_x, max_y, min_y, objects):
+        # Find segments and groups in specified area
+        # Searches for middle values (mid_x, mid_y)
+        # Format:
+        # 
+        # min_x, min_y ---------------
+        # |                          |
+        # |                          |
+        # ----------------max_x, max_y
+
+        # To return:
+        objects_found = []
+
+        # Find segments in area
+        for obj in objects:
+            if min_x < obj.boundingbox.mid_x < max_x and min_y < obj.boundingbox.mid_y < max_y:
+                objects_found.append(obj)
+
+        return objects_found
+
+
+    def find_roots(self, objects):
         # Find all roots and sort them by width
         roots = [obj for obj in objects if obj.truth == 'sqrt']
         roots = self.sort_objects_by_width(roots)
@@ -253,8 +285,25 @@ class Expression:
                 
                 root_obj = Root(root.id, [], root.traces)
                 objects.append(root_obj)
-                
 
+        return objects
+
+
+    def check_if_fraction(self, minus_sign, objects, max_y, min_y):
+
+        max_x = minus_sign.boundingbox.max_x
+        min_x = minus_sign.boundingbox.min_x
+
+        numerator = self.find_objects_in_area(max_x, min_x, minus_sign.boundingbox.mid_y - 1, min_y, objects)
+        denominator = self.find_objects_in_area(max_x, min_x, max_y, minus_sign.boundingbox.mid_y + 1, objects)
+
+        if len(numerator) > 0 and len(denominator) > 0:
+            return True, numerator, denominator
+        else:
+            return False, numerator, denominator
+    
+
+    def find_fractions(self, objects, max_x, min_x, max_y, min_y):
         # Find all minus signs and sort them by width
         minus_signs = [obj for obj in objects if obj.truth == '-']
         minus_signs = self.sort_objects_by_width(minus_signs)
@@ -297,14 +346,34 @@ class Expression:
                 
                 # Add to groups
                 objects.append(fraction)
+
+        return objects
+
+
+    def check_if_equalsign(self, minus_one, minus_two):
+        mid_x_one = minus_one.boundingbox.mid_x
+        mid_x_two = minus_two.boundingbox.mid_x
+        mid_y_one = minus_one.boundingbox.mid_y
+        mid_y_two = minus_two.boundingbox.mid_y
+        width_one = minus_one.boundingbox.width
+        width_two = minus_two.boundingbox.width
+
+        # Check if widths are similar
+        if np.abs(width_one - width_two) > (width_one + width_two)/2:
+            return False
         
+        # Check if mid_x values are inside treshhold
+        if np.abs(mid_x_one - mid_x_two) > (width_one + width_two)/3:
+            return False
+        
+        # Check if mid_y values are inside treshhold
+        if np.abs(mid_y_one - mid_y_two) > (width_one + width_two)/2:
+            return False
 
-        # Find all integrals
+        return True
 
 
-        # Find all sums
-
-
+    def find_equalsigns(self, objects):
         # Find equalsigns
         minus_signs = [obj for obj in objects if obj.truth == '-']
 
@@ -332,9 +401,21 @@ class Expression:
                     # Add to objects
                     objects.append(equal_obj)
                 
-        # Sort objects by x value
-        objects = self.sort_objects_by_x_value(objects)
+        return objects
 
+
+    def check_if_exponent(self, base, exponent):
+        mid_y_base = base.boundingbox.min_y
+        max_y_exp = exponent.boundingbox.mid_y
+
+        # Check if mid_y values are inside treshhold
+        if max_y_exp > mid_y_base:
+            return False
+
+        return True
+
+
+    def find_exponents(self, objects, max_x, min_x, max_y, min_y):
          # Find exponents
         looking_for_exponents = True
 
@@ -383,100 +464,9 @@ class Expression:
             # Continue if no exponent were found
             if not found_exponent:
                 break
-        
-
-        # Sort objects by x value
-        objects = self.sort_objects_by_x_value(objects)
 
         return objects
 
-
-
-
-    def find_objects_in_area(self, max_x, min_x, max_y, min_y, objects):
-        # Find segments and groups in specified area
-        # Searches for middle values (mid_x, mid_y)
-        # Format:
-        # 
-        # min_x, min_y ---------------
-        # |                          |
-        # |                          |
-        # ----------------max_x, max_y
-
-        # To return:
-        objects_found = []
-
-        # Find segments in area
-        for obj in objects:
-            if min_x < obj.boundingbox.mid_x < max_x and min_y < obj.boundingbox.mid_y < max_y:
-                objects_found.append(obj)
-
-        return objects_found
-
-
-    def check_if_fraction(self, minus_sign, objects, max_y, min_y):
-
-        max_x = minus_sign.boundingbox.max_x
-        min_x = minus_sign.boundingbox.min_x
-
-        numerator = self.find_objects_in_area(max_x, min_x, minus_sign.boundingbox.mid_y - 1, min_y, objects)
-        denominator = self.find_objects_in_area(max_x, min_x, max_y, minus_sign.boundingbox.mid_y + 1, objects)
-
-        if len(numerator) > 0 and len(denominator) > 0:
-            return True, numerator, denominator
-        else:
-            return False, numerator, denominator
-    
-
-    def check_if_equalsign(self, minus_one, minus_two):
-        mid_x_one = minus_one.boundingbox.mid_x
-        mid_x_two = minus_two.boundingbox.mid_x
-        mid_y_one = minus_one.boundingbox.mid_y
-        mid_y_two = minus_two.boundingbox.mid_y
-        width_one = minus_one.boundingbox.width
-        width_two = minus_two.boundingbox.width
-
-        # Check if widths are similar
-        if np.abs(width_one - width_two) > (width_one + width_two)/2:
-            return False
-        
-        # Check if mid_x values are inside treshhold
-        if np.abs(mid_x_one - mid_x_two) > (width_one + width_two)/3:
-            return False
-        
-        # Check if mid_y values are inside treshhold
-        if np.abs(mid_y_one - mid_y_two) > (width_one + width_two)/2:
-            return False
-
-        return True
-
-
-    def check_if_exponent(self, base, exponent):
-        mid_y_base = base.boundingbox.min_y
-        max_y_exp = exponent.boundingbox.mid_y
-
-        # Check if mid_y values are inside treshhold
-        if max_y_exp > mid_y_base:
-            return False
-
-        return True
-
-
-    def horizontal_search(self, start_object, max_x_diff):
-        # Find objects in a horizontal sequence
-
-        object_sequence = [start_object]
-        
-        objects_found = self.find_objects_in_area(start_object.boundingbox.mid_x + 100, start_object.boundingbox.mid_x, start_object.boundingbox.mid_y + 50, start_object.boundingbox.mid_y - 50)
-
-        #while len(objects_found) > 0:
-            # sort found objects by x
-            # add first to sequence
-            # search again with first object
-            
-
-        return object_sequence
-    
 
     def sort_objects_by_width(self, objects):
         return sorted(objects, key=lambda x: x.boundingbox.width, reverse=True)
