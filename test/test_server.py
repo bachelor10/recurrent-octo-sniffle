@@ -1,5 +1,7 @@
 import os
+import json
 import unittest
+import urllib
 
 from tornado.testing import AsyncHTTPTestCase
 
@@ -10,12 +12,14 @@ from tornado import gen
 from tornado import web
 
 
-# python3 -m unittest -v test.testserver
+# https://stackoverflow.com/questions/4060221/how-to-reliably-open-a-file-in-the-same-directory-as-a-python-script
+__location__ = os.path.realpath(os.path.join(os.getcwd(), os.path.dirname(__file__)))
 
+# python3 -m unittest -v test.testserver
 
 class TestServerBoot(AsyncHTTPTestCase):
 
-    # Must be overridden
+    # Must be overridden 
     def get_app(self):
         return server.app
 
@@ -36,11 +40,35 @@ class TestServerBoot(AsyncHTTPTestCase):
         self.assertEqual(res.code, 200)
 
 
+
+
+
 class TestServerResponse(AsyncHTTPTestCase):
 
     # must be overridden
     def get_app(self):
         return server.app
+
+    def test_post_api(self):
+        data = json.load(open(os.path.join(__location__, 'kp.json')))
+        resp = self.fetch(
+            '/api',
+            method='POST',
+            body=urllib.parse.urlencode(data),
+            follow_redirects=False
+        )
+
+        #print("\n\n\n", resp, "\n\n\n")
+        self.assertEqual(resp.code, 200)
+    
+    def test_get_api_code(self):
+        res = self.fetch('/api')
+        self.assertEqual(res.code, 200)
+    
+    def test_get_api_content(self):
+        res = self.fetch('/api')
+        self.assertIn(res.body, 'uuid')
+        self.assertIn(res.body, 'equation')
 
 
 
