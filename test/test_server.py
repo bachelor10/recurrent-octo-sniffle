@@ -43,6 +43,11 @@ class TestServerBoot(AsyncHTTPTestCase):
 
 
 
+
+# http://www.tornadoweb.org/en/stable/testing.html
+# Important to understand that with an async library/server it's necessary to test in an async way
+# TLDR, if you experience undefined behaviour, double check the use of yield, self.stop, self.wait()
+
 class TestServerResponse(AsyncHTTPTestCase):
 
     # must be overridden
@@ -69,7 +74,10 @@ class TestServerResponse(AsyncHTTPTestCase):
         res = self.fetch('/api')
         self.assertIn(res.body, 'uuid')
         self.assertIn(res.body, 'equation')
+    
 
+class TestWebSocketBoot(testing.AsyncTestCase):
+    pass
 
 
 
