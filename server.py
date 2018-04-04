@@ -21,8 +21,6 @@ class Client:
 
             if 'x1' in msg and 'y1' in msg:  # Make sure to only add pairs of coordinates.
                 self.buffer[traceid].append([int(msg['x1']), int(msg['y1'])])
-            if 'x2' in msg and 'y2' in msg:
-                self.buffer[traceid].append([int(msg['x2']), int(msg['y2'])])
 
         else:
             print("Found no traceid.")
@@ -54,6 +52,8 @@ clients = dict()
 
 predictor = Predictor(os.getcwd() + '/machine_learning/my_model_1tanh_2.h5')
 
+
+# !WEBSOCKET IS NOT IN USE ATM!
 class WebSocket(websocket.WebSocketHandler):
     def open(self):
         print('Client connected to websocket!')
@@ -181,7 +181,7 @@ class IndexHandler(web.RequestHandler):
 
 app = web.Application([
     (r'/', IndexHandler),
-    (r'/ws', WebSocket),
+    # (r'/ws', WebSocket),
     (r'/api', rest_handler),
     (r'/client/(.*)', web.StaticFileHandler, {'path': './client/'})
 ])
