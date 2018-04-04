@@ -194,13 +194,14 @@ def parse_segment_to_array(directory, is_predict=False, clean=False, _file='raw'
 
 
 if __name__ == '__main__':
-	# root = get_inkml_root('01.inkml')
-	# segments = find_segments(root)  # gets a list of Segment objects
-	print("")
-	
-	# print(segments)
-	# consecutive_segments(segments)
-	#parse_segment_to_array(os.curdir + "/BACHELOR_DATA/GT/", clean=False)
+	root = get_inkml_root('01.inkml')
+	segments = find_segments(root)  # gets a list of Segment objects
+	ex, trt = parse_single_segment(segments[0])
+	print(ex.flatten())
+	# print("")
+	# t_writer = tf.python_io.TFRecordWriter(os.curdir + "/TF_R/GT_T.tfrecords")
+	# writer = tf.python_io.TFRecordWriter(os.curdir + "/TF_R/GT.tfrecords")
+	# seg_to_tfexample(filename=os.curdir + "/TF_R/GT", writer=writer, t_writer=t_w
 
 '''
 				if random.uniform(0, 1) > 0.8:

@@ -11,8 +11,8 @@ from keras.layers import LSTM
 from keras.utils import Sequence
 import numpy as np
 
-from online_recog.xml_parse_rawdata import *
-from online_recog.online_trainer import *
+from online_recog.create_trdata import *
+from online_recog.tf_sequence import *
 
 
 def populate_data_names(fil):

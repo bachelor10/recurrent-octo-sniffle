@@ -1,13 +1,13 @@
 import os
 import numpy as np
 from machine_learning.xml_parse import format_trace, find_segments
-from online_recog.xml_parse_rawdata import get_inkml_root
+from online_recog.create_trdata import get_inkml_root
 
 
 #TODO close filstream somehow (?)
 def max_segmentlength():
 	longest = []
-	directory = os.curdir + "/BACHELOR_DATA" + "/GT"
+	directory = os.path.dirname(os.path.realpath(__file__)) + "/BACHELOR_DATA" + "/GT"
 	for filename in os.listdir(directory):
 		if filename.endswith(".inkml"):
 			if not (filename is None):
