@@ -10,18 +10,8 @@
 
 
 ### Python packages
-- Tensorflow
-- Keras
-- graphviz
-- pydot
+- [Requirements](requirements.txt)
 
-
-### Symbols
--
--
-
-### Who is this meant for?
--
 
 ### Goals
 - [x] Interpret single digits
