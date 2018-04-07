@@ -120,5 +120,12 @@ ENV/
 my_model.h5
 machine_learning/lstm_model.h5
 
+
+
+*.tfrecord.classes
+*.tfrecord-?????-of-?????
+*.inkml
+*.tfrecords
+
 truths.csv
 predictions.csv
