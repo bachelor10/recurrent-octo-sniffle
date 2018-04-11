@@ -1,7 +1,7 @@
 import os
 import numpy as np
 from machine_learning.xml_parse import format_trace, find_segments
-from online_recog.create_trdata import get_inkml_root
+from online_recog.create_dataset import get_inkml_root
 
 
 #TODO close filstream somehow (?)
