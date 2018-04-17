@@ -11,13 +11,12 @@ import random
 import os
 import matplotlib.pyplot as plt
 import matplotlib.quiver as quiv
-from rdp import rdp, rdp_iter  # https://pypi.python.org/pypi/rdp
 import tensorflow as tf
 import h5py
 import sys
 from scipy import signal
 
-from machine_learning.xml_parse import format_trace, find_segments
+from xml_parse import format_trace, find_segments
 
 random.seed(87734961265)
 
@@ -60,7 +59,7 @@ def parse_single_segment(segment):  # segment object
 	traces = segment.traces
 	stroke_lengths = find_tracelength(traces)
 	total_points = sum(stroke_lengths)
-	np_ink = np.zeros((total_points, 3), dtype=np.float32)
+	np_ink = np.zeros((total_points, 3), dtype='float32')
 	it = 0
 	if not traces:
 		return None, None
