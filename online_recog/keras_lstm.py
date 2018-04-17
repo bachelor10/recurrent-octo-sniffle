@@ -2,7 +2,7 @@
 
 import keras
 from keras.models import Sequential
-from keras.layers import Conv1D, Conv2D, GRU, Bidirectional, MaxPooling1D, MaxPooling2D, Merge, BatchNormalization, Activation, Input, TimeDistributed, Dense, Flatten, Dropout, LSTM, Embedding
+from keras.layers import Conv1D, Conv2D, GRU, Concatenate, Bidirectional, MaxPooling1D, MaxPooling2D, Merge, BatchNormalization, Activation, Input, TimeDistributed, Dense, Flatten, Dropout, LSTM, Embedding
 from io import BytesIO
 import os
 from matplotlib import pyplot as plt
@@ -88,13 +88,12 @@ def create_combined_model():
     LSTM_model = create_LSTM_model()
     CNN_model = create_CNN_model()
 
-    model = Sequential()
-    model.add(Merge([LSTM_model, CNN_model], mode = 'concat'))
-    model.add(Dense(128, activation="relu"))
-    model.add(Dropout(0.3))
-    model.add(Dense(38, activation = 'softmax'))
+    concatenated = Concatenate()([LSTM_model.output, CNN_model.output])
+    model = (Dense(128, activation="relu"))(concatenated)
+    model = (Dropout(0.3))(model)
+    model = (Dense(38, activation = 'softmax'))(model)
 
-    return model
+    return keras.models.Model([LSTM_model.input, CNN_model.input], model)
 
 def compile_model(model):
 
@@ -128,21 +127,21 @@ def find_truth(prediction):
 
 
 
-trainX, trainY = generate_train_data(50000)
+#trainX, trainY = generate_train_data(50000)
 
 
-np.save('./data/trainX_trace', trainX[0])
-np.save('./data/trainX_img', trainX[1])
-np.save('./data/trainY', trainY)
+#np.save('./data/trainX_trace', trainX[0])
+#np.save('./data/trainX_img', trainX[1])
+#np.save('./data/trainY', trainY)
 
-#trainX_trace = np.load('./data/trainX_trace.npy')
-#trainX_img = np.load('./data/trainX_img.npy')
-#trainY = np.load('./data/trainY.npy')
+trainX_trace = np.load('./data/trainX_trace.npy')
+trainX_img = np.load('./data/trainX_img.npy')
+trainY = np.load('./data/trainY.npy')
 
     
 #print(trainY[0])
 
-history = run_model(trainX, trainY)
+history = run_model([trainX_trace, trainX_img], trainY)
 print(history.history.keys())
 # summarize history for accuracy
 plt.plot(history.history['acc'])

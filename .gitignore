@@ -116,6 +116,11 @@ ENV/
 /machine_learning/validation2-old/
 /machine_learning/my_model.h5
 /machine_learning/visualization/
+/online_recog/data/
+/online_recog/logs/
+/online_recog/lstm_model.h5
+/visualization
+
 .vscode/settings.json
 my_model.h5
 machine_learning/lstm_model.h5
