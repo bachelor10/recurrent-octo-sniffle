@@ -2,14 +2,59 @@
 
 import keras
 from keras.models import Sequential
+from keras.callbacks import Callback
 from keras.layers import Conv1D, Conv2D, GRU, Concatenate, Bidirectional, MaxPooling1D, MaxPooling2D, Merge, BatchNormalization, Activation, Input, TimeDistributed, Dense, Flatten, Dropout, LSTM, Embedding
 from io import BytesIO
 import os
 from matplotlib import pyplot as plt
 from preprocessing import generate_dataset
 import numpy as np
+from sklearn.utils import shuffle
+
 
 plt.style.use('ggplot')
+
+#https://github.com/keras-team/keras/issues/2548
+class StorageCallback(Callback):
+    def __init__(self, real_dataX, real_dataY, name=""):
+        self.real_dataX = real_dataX
+        self.real_dataY = real_dataY
+
+        self.real_data_loss = []
+        self.real_data_acc = []
+
+        self.validation_data_loss = []
+        self.validation_data_acc = []
+        
+        self.train_data_loss = []
+        self.train_data_acc = []
+
+        self.filename = name
+
+    def on_epoch_end(self, epoch, logs={}):
+        x, y = self.real_dataX, self.real_dataY
+        loss, acc = self.model.evaluate(x, y, verbose=0)
+        print('\nTesting loss: {}, acc: {}\n'.format(loss, acc))
+
+        self.real_data_loss.append(loss)
+        self.real_data_acc.append(acc)
+
+        self.validation_data_loss.append(logs['val_loss'])
+        self.validation_data_acc.append(logs['val_acc'])
+
+        self.train_data_loss.append(logs['loss'])
+        self.train_data_acc.append(logs['acc'])
+
+
+        np.save('./logs/' + self.filename + "_real_data_loss", np.array(self.real_data_loss))
+        np.save('./logs/' + self.filename + "_real_data_acc", np.array(self.real_data_acc))
+        np.save('./logs/' + self.filename + "_validation_data_loss", np.array(self.validation_data_loss))
+        np.save('./logs/' + self.filename + "_validation_data_acc", np.array(self.validation_data_acc))
+        np.save('./logs/' + self.filename + "_train_data_loss", np.array(self.train_data_loss))
+        np.save('./logs/' + self.filename + "_train_data_acc", np.array(self.train_data_acc))
+
+
+        
 
 
 CLASS_INDICES = {'3': 7, 'y': 36, 'lt': 26,'\lt': 26, 'gamma': 22, '\\gamma': 22, 'beta': 20, '\\beta': 20, ')': 1, '0': 4, '1': 5, 'sqrt': 33, '\sqrt': 33, 'lambda': 25, '\\lambda': 25, '7': 11, 'z': 37, '6': 10, 'Delta': 15,'\\Delta': 15, '-': 3, 'neq': 28,'\\neq': 28, '=': 14, '8': 12, 'G': 16, 'sigma': 32,'\\sigma': 32, 'f': 21, 'rightarrow': 31,'\\rightarrow': 31, 'phi': 29,'\phi': 29, 'infty': 24,'\infty': 24, 'x': 35, '[': 17, '9': 13, 'gt': 23, '\gt': 23, 'theta': 34,'\\theta': 34, 'pi': 30, '\pi': 30, '4': 8, '5': 9, '2': 6, 'mu': 27, '\mu': 27, '(': 0, ']': 18, 'alpha': 19, '\\alpha': 19, '+': 2}
@@ -28,6 +73,18 @@ def generate_train_data(limit=10000):
         one_hot = np.zeros(38)
         one_hot[CLASS_INDICES[truth]] = 1
         truth_data.append(one_hot)
+        
+        """f, (ax1, ax2) = plt.subplots(1, 2)
+        print(np.array(image).reshape(26, 26)/255)
+        ax1.imshow(np.array(image).reshape(26, 26))
+        print(segment[:, 0], segment[:, 1])
+        ax2.plot(segment[:, 0], segment[:, 1], '-o')
+        ax2.invert_yaxis()
+        ax2.set_xlim([-1, 1])
+        ax2.set_ylim([1, -1])
+
+        plt.show()"""
+
 
         count += 1
     
@@ -45,7 +102,7 @@ def predict_classes(imgs):
 
 
 # Original LSTM model
-def create_LSTM_model():
+def create_LSTM_model(with_last_layer=False):
     model = Sequential()
     model.add(Conv1D(48, 5, activation="relu", padding="valid", input_shape=(40, 3)))
     model.add(MaxPooling1D())
@@ -60,14 +117,16 @@ def create_LSTM_model():
     model.add(Dropout(0.2))
     model.add(Bidirectional(GRU(128, activation="relu")))
     model.add(Dropout(0.2))
-    #model.add(Dense(38, activation="softmax"))
+    if with_last_layer:
+        model.add(Dense(38, activation="softmax"))
+    
     return model
 
    #model.compile(loss=keras.losses.categorical_crossentropy, optimizer='adam', metrics=['accuracy'])
 
 
 # Example CNN model
-def create_CNN_model():
+def create_CNN_model(with_last_layer=False):
     model = Sequential()
     model.add(Conv2D(32, (3, 3), input_shape=(26,26,1), activation='relu'))
     model.add(Conv2D(32, (3, 3), activation='relu'))
@@ -80,7 +139,8 @@ def create_CNN_model():
     # Fully connected layer
     model.add(Dense(512, activation='tanh'))
     model.add(Dropout(0.5))
-    #model.add(Dense(38, activation="softmax"))
+    if with_last_layer:
+        model.add(Dense(38, activation="softmax"))
     return model
 
 #Compined CNN and LSTM
@@ -101,21 +161,11 @@ def compile_model(model):
                 optimizer="adam",
                 metrics=['accuracy'])
 
-def run_model(trainX, trainY):
+def run_model(trainX, trainY, realX, realY, model, name="", num_epochs=10):
 
-    m = create_combined_model()
-    compile_model(m)
-    print(m.summary())
+    history = model.fit(trainX, trainY, epochs=num_epochs, verbose=1, shuffle=True, validation_split=0.1, 
+        callbacks=[StorageCallback(realX, realY, name)])
 
-    #trainX = trainX.reshape(1, 303, 39)
-    #data = data.reshape(1, 10, 2)
-    #trainY = np.asarray(trainY).reshape(1,303, 39)
-    #print(data.shape)
-    tensorboard = keras.callbacks.TensorBoard(log_dir='./logs', histogram_freq=0, batch_size=32, write_graph=True, write_grads=True, write_images=True)
-
-    history = m.fit(trainX, trainY, epochs=10, verbose=1, shuffle=True, validation_split=0.1, callbacks=[tensorboard])
-
-    m.save('lstm_model.h5')
 
     return history
 
@@ -125,7 +175,27 @@ def find_truth(prediction):
         if val == pred_index:
             return key
 
+def run_combined_model(trainX, trainY, realX, realY):
 
+    m = create_combined_model()
+    compile_model(m)
+    run_model(trainX, trainY, realX, realY, m, "combined_model")
+    m.save('combined_model.h5')
+
+def run_RNN_model(trainX, trainY, realX, realY):
+
+    m = create_LSTM_model(with_last_layer=True)
+    compile_model(m)
+
+    run_model(trainX[0], trainY, realX[0], realY, m, "RNN_model")
+    m.save('RNN_model.h5')
+
+def run_CNN_model(trainX, trainY, realX, realY):
+
+    m = create_CNN_model(with_last_layer=True)
+    compile_model(m)
+    run_model(trainX[1], trainY, realX[1], realY, m, "CNN_model")
+    m.save('CNN_model.h5')
 
 #trainX, trainY = generate_train_data(50000)
 
@@ -138,11 +208,22 @@ trainX_trace = np.load('./data/trainX_trace.npy')
 trainX_img = np.load('./data/trainX_img.npy')
 trainY = np.load('./data/trainY.npy')
 
-    
-#print(trainY[0])
+realX = [np.load('./data/real_test_data/trainX_trace.npy'), np.load('./data/real_test_data/trainX_img.npy')]
+realY = np.load('./data/real_test_data/trainY.npy')
 
-history = run_model([trainX_trace, trainX_img], trainY)
-print(history.history.keys())
+
+realX[0] = realX[0].reshape(len(realX[0]), 40, 3)
+realX[1] = realX[1].reshape(len(realX[0]), 26, 26, 1)
+
+#trainX_trace, trainX_img, trainY = shuffle(trainX_trace, trainX_img, trainY, random_state=0)
+
+#print("Image example", image_example)
+#print("sequence example", sequence_example)
+
+
+run_combined_model([trainX_trace[:20000], trainX_img[:20000]], trainY[:20000], realX, realY)
+
+"""print(history.history.keys())
 # summarize history for accuracy
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
@@ -151,7 +232,8 @@ plt.ylabel('accuracy')
 plt.xlabel('epoch')
 plt.legend(['train', 'test'], loc='upper left')
 plt.show()
-"""
+
+
 lstm_mod = keras.models.load_model(os.getcwd() + '/lstm_model.h5')
 trainX, trainY = generate_train_data(100)
 predictions = lstm_mod.predict_proba(trainX)

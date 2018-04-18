@@ -9,6 +9,7 @@ from keras.preprocessing import sequence
 import math
 from PIL import Image, ImageDraw
 from itertools import cycle
+import rpd_test
 
 def get_inkml_root(file):
 	return ET.parse(file).getroot()
@@ -114,17 +115,17 @@ def run_rdp_on_traces(traces):
     traces_after_rdp = []
 
     for trace in traces:
-        traces_after_rdp.append(rdp(trace, epsilon=0.001))
+        traces_after_rdp.append(rpd_test.rdp_fixed_num(trace, fixed_num=40))
         #traces_after_rdp.append(rdp_fixed_num(trace, ))
 
     return traces_after_rdp
 
 IMG_RESOLUTION = 26
 def generate_bitmap(traces):
-    resolution = IMG_RESOLUTION - 4
+    resolution = IMG_RESOLUTION
     image_resolution = IMG_RESOLUTION
 
-    image = Image.new('L', (image_resolution, image_resolution), "white")
+    image = Image.new('L', (image_resolution, image_resolution), "black")
     draw = ImageDraw.Draw(image)
 
     max_x = 0
@@ -193,7 +194,7 @@ def generate_bitmap(traces):
 
         for x_coord, y_coord in coordinates[:-1]:
             next_coord = next(xy_cycle)
-            draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="black", width=1)
+            draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="white", width=1)
 
     return image
 

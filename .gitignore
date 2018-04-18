@@ -119,6 +119,10 @@ ENV/
 /online_recog/data/
 /online_recog/logs/
 /online_recog/lstm_model.h5
+/online_recog/combined_model.h5
+/online_recog/RNN_model.h5
+/online_recog/CNN_model.h5
+
 /visualization
 
 .vscode/settings.json
