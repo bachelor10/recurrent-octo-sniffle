@@ -123,7 +123,7 @@ ENV/
 /online_recog/RNN_model.h5
 /online_recog/CNN_model.h5
 
-/visualization
+/visualization/images
 
 .vscode/settings.json
 my_model.h5
