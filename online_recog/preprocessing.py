@@ -10,6 +10,8 @@ import math
 from PIL import Image, ImageDraw
 from itertools import cycle
 import rpd_test
+import random
+import time
 
 def get_inkml_root(file):
 	return ET.parse(file).getroot()
@@ -17,7 +19,7 @@ def get_inkml_root(file):
 
 
 def segment_generator(directory):
-
+    count = 0
     for file in os.listdir(directory):
         try:
 
@@ -32,9 +34,19 @@ def segment_generator(directory):
 
         except GeneratorExit:
             break
-        except:
+        except Exception as e:
+            count += 1
+            print("ERROR IN FILE", count)
+            print("Error", e)
             continue
 
+def get_single_segment(truth, num=0):
+    curr = 0
+    for segment in segment_generator(os.getcwd() + '/data/xml/'):
+        if segment.truth == truth:
+            if curr == num:
+                    return segment.traces
+            curr += 1
 
 
 def plot_trace(trace):  # trace is x,y coordinates
@@ -71,25 +83,25 @@ def scale_traces(trace, resolution=1):
     if scale > 1:
         # width > height
         height_scale = resolution / scale
+        side = height_scale
     else:
         # width < height
         width_scale = resolution * scale
+        side = width_scale
 
-    side = (resolution - width_scale) / 2
 
-    if width_scale > 0:
+    if scale < 1:
         # add padding in x-direction
 
         trace[:,1] = scale_linear_bycolumn(trace[:,1], high=resolution, low=-resolution, ma=max_y, mi=min_y)
-        side = (resolution - width_scale) / 2
-        trace[:,0] = scale_linear_bycolumn(trace[:,0], high=(resolution - side), low=(-resolution + side), ma=max_x, mi=min_x)
+        trace[:,0] = scale_linear_bycolumn(trace[:,0], high=(side), low=(-side), ma=max_x, mi=min_x)
+
     else:
 
         # add padding in y-direction
         trace[:,0] = scale_linear_bycolumn(trace[:,0], high=resolution, low=-resolution, ma=max_x,
                                         mi=min_x) 
-        side = (resolution - height_scale) / 2
-        trace[:,1] = scale_linear_bycolumn(trace[:,1], high=(resolution - side), low=(-resolution +side), ma=max_y,
+        trace[:,1] = scale_linear_bycolumn(trace[:,1], high=(-side), low=(side), ma=max_y,
                                         mi=min_y) 
 
     return trace
@@ -119,6 +131,7 @@ def run_rdp_on_traces(traces):
         #traces_after_rdp.append(rdp_fixed_num(trace, ))
 
     return traces_after_rdp
+
 
 IMG_RESOLUTION = 26
 def generate_bitmap(traces):
@@ -198,76 +211,67 @@ def generate_bitmap(traces):
 
     return image
 
-def to_distance_between(traces):
-    traces[1:, 0:0] = traces[1:, 0:1] - traces[0:-1, 0:1]
-    traces = traces[1:, :]
-    traces[:, 1] = traces[:,2]
-    traces = traces[:, 0:2]
-    return traces
 
-    
-def generate_dataset(numb_symbols=100, include=None, returnType=['TRACE', 'IMAGE']):
+        
+def generate_dataset(numb_symbols=100, include=None, returnType=['TRACE', 'IMAGE'], num_augumentations=3):
     segments = []
     images = []
     truths = []
+    original_traces = []
+
+    count = 0
 
     for segment in segment_generator(os.getcwd() + '/data/xml/'):
-        
+
         if include:
             try: 
                 include[segment.truth]
             except:
                 continue
 
-        if 'TRACE' in returnType:
+            if 'TRACE' in returnType:
+                processed = run_rdp_on_traces(segment.traces)
+                processed = combine_segment(processed)
 
-            processed = run_rdp_on_traces(segment.traces)
-            
-            processed = combine_segment(processed)
+                processed = scale_traces(processed)
+
+
+                if np.isnan(processed).any(): 
+                    print(segment.traces, segment.truth)
+                    continue
                 
-            processed = scale_traces(processed)
-                
+                segments.append(processed)
 
-            if np.isnan(processed).any(): continue
+            if 'IMAGE' in returnType:
+
+                image = generate_bitmap(segment.traces)
+
+                images.append(image)
+
+            truths.append(segment.truth)
+            original_traces.append(segment.traces)
+
+            if(len(segments) % 1000 == 0): print(len(segments))
             
-            segments.append(processed)
 
-        if 'IMAGE' in returnType:
-            image = generate_bitmap(segment.traces)
-            images.append(image)
+        count += 1
+        if count > numb_symbols: break
 
-        truths.append(segment.truth)
-
-        if(len(segments) % 1000 == 0): print(len(segments))
-        if len(segments) > numb_symbols: break
 
     segments = np.array(segments)
     truths = np.array(truths)
 
     padded = sequence.pad_sequences(segments, dtype='float32', maxlen=40)
 
-    return padded, images, truths
+    return padded, images, truths, original_traces
 
 if __name__ == '__main__':
+    trace = np.array([[2, -1], [2, 0], [2, 1]])
+    plt.plot(trace[:, 0], trace[:, 1])
+    res_trace = scale_traces(trace)
+    plt.figure()
+    plt.plot(res_trace[:, 0], res_trace[:, 1])
 
-    segments = []
-    for segment in segment_generator(os.getcwd() + '/data/xml/'):
-
-        traces = np.array(segment.traces)
-        processed = run_rdp_on_traces(segment.traces)
-
-        
-        before_scale = combine_segment(processed)
-
-
-        processed = scale_traces(before_scale)
-
-        segments.append(processed)
-
-        if len(segments) > 100:
-            break
-    
-    segments = np.array(segments)
-    padded = sequence.pad_sequences(segments, dtype='float32', maxlen=40)
+    plt.show()
 
         

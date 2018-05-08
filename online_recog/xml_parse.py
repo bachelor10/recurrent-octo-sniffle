@@ -20,7 +20,13 @@ def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0, printt=False): 
 
     rng = maxs - mins
 
+    if rng == 0:
+        print("Rawpoints", rawpoints, "MAX", maxs, "MIN", mins)
+        rng = 0.001
     output = high - (((high - low) * (maxs - rawpoints)) / rng)
+    if rng == 0.001:
+        print("OUTPUT", output)
+
 
     if(printt):
         print("raw", rawpoints)

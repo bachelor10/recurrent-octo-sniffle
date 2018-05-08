@@ -7,7 +7,7 @@ from keras.layers import Conv1D, Conv2D, GRU, Concatenate, Bidirectional, MaxPoo
 from io import BytesIO
 import os
 from matplotlib import pyplot as plt
-from preprocessing import generate_dataset
+from preprocessing import generate_dataset, get_single_segment
 import numpy as np
 from sklearn.utils import shuffle
 
@@ -64,7 +64,7 @@ def generate_train_data(limit=10000):
     pred_images = []
     truth_data = []
 
-    segments, images, truths = generate_dataset(limit, include=CLASS_INDICES)
+    segments, images, truths, original_traces = generate_dataset(limit, include=CLASS_INDICES, num_augumentations=2)
     count = 0
     for segment, image, truth in zip(segments, images, truths):
 
@@ -75,9 +75,7 @@ def generate_train_data(limit=10000):
         truth_data.append(one_hot)
         
         """f, (ax1, ax2) = plt.subplots(1, 2)
-        print(np.array(image).reshape(26, 26)/255)
         ax1.imshow(np.array(image).reshape(26, 26))
-        print(segment[:, 0], segment[:, 1])
         ax2.plot(segment[:, 0], segment[:, 1], '-o')
         ax2.invert_yaxis()
         ax2.set_xlim([-1, 1])
@@ -88,7 +86,7 @@ def generate_train_data(limit=10000):
 
         count += 1
     
-    return [np.array(prediction_data), np.array(pred_images)], np.array(truth_data)
+    return [np.array(prediction_data), np.array(pred_images)], np.array(truth_data), np.array(original_traces)
 
 def predict_classes(imgs):
     MODEL_PATH = os.getcwd() + '/my_model.h5'
@@ -106,17 +104,20 @@ def create_LSTM_model(with_last_layer=False):
     model = Sequential()
     model.add(Conv1D(48, 5, activation="relu", padding="valid", input_shape=(40, 3)))
     model.add(MaxPooling1D())
-    model.add(Dropout(0.3))
     model.add(BatchNormalization())
-    model.add(Conv1D(48, 5, activation="relu", padding="valid"))
+    model.add(Dropout(0.3))
+    model.add(Conv1D(64, 5, activation="relu", padding="valid"))
     model.add(MaxPooling1D())
-    model.add(Dropout(0.3))
     model.add(BatchNormalization())
+    model.add(Dropout(0.3))
+    model.add(Conv1D(96, 5, activation="relu", padding="valid"))
+    model.add(MaxPooling1D())
+    model.add(BatchNormalization())
+    model.add(Dropout(0.3))
 
-    model.add(Bidirectional(GRU(128, return_sequences=True, activation="relu")))
-    model.add(Dropout(0.2))
-    model.add(Bidirectional(GRU(128, activation="relu")))
-    model.add(Dropout(0.2))
+
+    model.add(Bidirectional(GRU(128, return_sequences=True, activation="relu", dropout=0.2, recurrent_dropout=0.2)))
+    model.add(Bidirectional(GRU(128, activation="relu", recurrent_dropout=0.2, dropout=0.2)))
     if with_last_layer:
         model.add(Dense(38, activation="softmax"))
     
@@ -161,7 +162,7 @@ def compile_model(model):
                 optimizer="adam",
                 metrics=['accuracy'])
 
-def run_model(trainX, trainY, realX, realY, model, name="", num_epochs=10):
+def run_model(trainX, trainY, realX, realY, model, name="", num_epochs=20):
 
     history = model.fit(trainX, trainY, epochs=num_epochs, verbose=1, shuffle=True, validation_split=0.1, 
         callbacks=[StorageCallback(realX, realY, name)])
@@ -197,12 +198,25 @@ def run_CNN_model(trainX, trainY, realX, realY):
     run_model(trainX[1], trainY, realX[1], realY, m, "CNN_model")
     m.save('CNN_model.h5')
 
-#trainX, trainY = generate_train_data(50000)
-
+#trainX, trainY, original_traces = generate_train_data(50000)
 
 #np.save('./data/trainX_trace', trainX[0])
 #np.save('./data/trainX_img', trainX[1])
 #np.save('./data/trainY', trainY)
+#np.save('./data/original_traces', original_traces)
+
+"""
+traces = np.array(get_single_segment('\\beta', num=3))
+
+
+for t in traces:
+    plt.plot(t[:, 0], t[:, 1], '-o')
+
+plt.gca().invert_yaxis()
+plt.axis('equal')
+plt.savefig('../visualization/images/beta_raw.png')
+"""
+
 
 trainX_trace = np.load('./data/trainX_trace.npy')
 trainX_img = np.load('./data/trainX_img.npy')
@@ -221,9 +235,8 @@ realX[1] = realX[1].reshape(len(realX[0]), 26, 26, 1)
 #print("sequence example", sequence_example)
 
 
-run_combined_model([trainX_trace[:20000], trainX_img[:20000]], trainY[:20000], realX, realY)
-
-"""print(history.history.keys())
+run_RNN_model([trainX_trace, trainX_img], trainY, realX, realY)
+print(history.history.keys())
 # summarize history for accuracy
 plt.plot(history.history['acc'])
 plt.plot(history.history['val_acc'])
@@ -243,4 +256,3 @@ cnn_truths = [find_truth(pred) for pred in predictions]
 print("Actual truth", actual_truth)
 print("CNN truths", cnn_truths)
 
-"""

@@ -69,7 +69,7 @@ def draw_probabilities_after_activation(start, stop):
     x = np.arange(start, stop, 10)
 
 
-    names = np.asarray(['1', '2', '3', '4', '5'])
+    names = np.asarray(['A', 'B', 'C', 'D', 'E'])
 
     heigths = np.asarray([-400, 200, -1200, 800, 1000])
     height_lower_values = heigths / 1000
@@ -97,10 +97,37 @@ def draw_probabilities_after_activation(start, stop):
 
     plt.show()
 
+def draw_softmax_example():
+
+    names = np.asarray(['A', 'B', 'C', 'D', 'E'])
+
+    heigths = np.asarray([-400, 200, -1200, 800, 1000])
+    height_lower_values = heigths / 500
+
+    height_lower_after_ReLU = ReLU(height_lower_values)
+
+
+    plt.subplot(1,3,1)
+    plt.bar(names, height_lower_values)
+    plt.title("Input", size=12)
+
+    plt.subplot(1,3,2)
+    plt.bar(names, height_lower_after_ReLU)
+    plt.title("ReLU output",size=12)
+
+
+    plt.subplot(1,3,3)
+    plt.bar(names, softmax(height_lower_after_ReLU))
+    plt.title("Softmax output",size=12)
+
+    plt.suptitle('Squashing network output',size=16, y=1.0)
+
+    plt.show()
 
 
 if __name__ == '__main__':
-    draw_activation_functions_dotted(-4, 4)
-    draw_activation_functions(-4, 4)
+    #draw_activation_functions_dotted(-4, 4)
+    #draw_activation_functions(-4, 4)
     range = 100
     #draw_probabilities_after_activation(0, range)
+    draw_softmax_example()
