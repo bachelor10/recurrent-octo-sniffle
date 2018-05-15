@@ -8,15 +8,18 @@ import random
 import os
 import sys
 
+"""
+    This file is used to read InkML files, parse each file into different segments and create 
+    python dictionaries with each symbols including their traces and truth.
+"""
 
 IMG_RESOLUTION = 26
     
-classes = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '-', '=', '+']
 
-
-def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0, printt=False):  # , maximum=None, minimum=None):
-    mins = mi  # np.min(rawpoints, axis=0)
-    maxs = ma  # np.max(rawpoints, axis=0)
+# Scales a list of traces to a given range. See https://gist.github.com/perrygeo/4512375
+def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0): 
+    mins = mi 
+    maxs = ma
 
     rng = maxs - mins
 
@@ -24,21 +27,9 @@ def scale_linear_bycolumn(rawpoints, high=24, low=0, ma=0, mi=0, printt=False): 
         print("Rawpoints", rawpoints, "MAX", maxs, "MIN", mins)
         rng = 0.001
     output = high - (((high - low) * (maxs - rawpoints)) / rng)
-    if rng == 0.001:
-        print("OUTPUT", output)
-
-
-    if(printt):
-        print("raw", rawpoints)
-        print("high", high)
-        print("low", low)
-        print("ma", ma)
-        print("mi", mi)
-        print("out", output)
-    
     return output
 
-
+# Parse a single single trace from InkML trace string
 def format_trace(text):
     l = []
 
@@ -48,13 +39,14 @@ def format_trace(text):
 
     return l
 
-
+# Search for a trace in the InkML file from a given id
 def find_trace(root, id):
     for child in root.findall('{http://www.w3.org/2003/InkML}trace'):
         if child.attrib['id'] == id:
             return format_trace(child.text)
 
 
+# Find a combination all symbols and their truths from a InkML file
 def find_segments(root):
     segments = []
     for group in root.findall('{http://www.w3.org/2003/InkML}traceGroup'):
@@ -76,6 +68,12 @@ def find_segments(root):
     return segments
 
 
+"""
+    A class used to represent a group of traces, that combined makes up a symbol.
+    This class also has methods for calculating bounding boxes, scaling etc.
+    These methods are no longer in use, however, they may be useful for another 
+    attempt at predicting bounding boxes around symbols.
+ """
 class Segment:
 
     def __init__(self, id, truth):
@@ -111,7 +109,6 @@ class Segment:
         self.h = np.abs(top - bottom)
         self.w = np.abs(right - left)
 
-        #return self.x, self.y, self.h, self.w
         return right, bottom, left, top
 
     def normalize(self, img_high, img_width, max_x, max_y, min_x, min_y, width_scale, height_scale):
@@ -233,6 +230,10 @@ class Segment:
             return None, None, None
 
 
+"""
+    This class has methods for creating full images from the whole InkML file. 
+    The class is not currently in use, however may be useful for end to end predictions.
+"""
 class Equation:
     IMG_HEIGHT = 64
     IMG_WIDTH = 128
@@ -246,36 +247,7 @@ class Equation:
         self.width_scale = 0
         self.height_scale = 0
 
-    """def save(self):
-        for segment in self.segments:
-            x, y, h, w = segment.compute_bounding_box()
-
-            image, truth, segment_id = segment.generate_bitmap()
-
-            if image is None: continue
-
-            directory = os.getcwd() + "/" + dirs[1]
-
-            if random.random() > 0.8:
-                directory = os.getcwd() + "/" + dirs[0]
-
-            if truth.isalpha():
-                if truth.isupper():
-                    truth = truth + "_"
-
-            if truth == '|':
-                truth = '_|'
-
-            subdir = directory + "/" + truth
-
-            filename = subdir + '/' + truth + "_" + segment_id + ".bmp"
-
-            if not os.path.exists(subdir):
-                os.makedirs(subdir)
-
-            image.save(filename)"""
-
-
+    # Calculates  boundries for all segments in the equation
     def compute_global_boundaries(self):
 
         for segment in self.segments:
@@ -309,7 +281,7 @@ class Equation:
 
 
 
-
+    # Converts the equation to a scaled image
     def create_image_and_scale(self):
 
         image = Image.new('LA', (Equation.IMG_WIDTH, Equation.IMG_HEIGHT), "black")
@@ -319,99 +291,17 @@ class Equation:
         bounding_boxes = []
 
         for segment in self.segments:
-            #segment.calculate_bounding_box()
+            #segment.calculate_bounding_box() # No longer in use
 
 
             segment.normalize(Equation.IMG_HEIGHT, Equation.IMG_WIDTH, self.glob_max_x, self.glob_max_y,
                               self.glob_min_x, self.glob_min_y, self.width_scale, self.height_scale)
             segment.draw_symbol(draw)
             segment.calculate_bounding_box()
-            #segment.draw_bounding_box(draw)
+            #segment.draw_bounding_box(draw) # No longer in use
 
             bounding_boxes.append([segment.x, segment.y, segment.w, segment.h])
 
         return (image, bounding_boxes)
 
 
-def continous_symbol_generator(limit=0):
-    count = 0
-    for file in os.listdir(os.getcwd() + '/train'):
-        if count > limit: break
-        if count%100 == 0: print('Count', count)
-        
-        full_filename = os.getcwd() + '/train/' + file
-        try:
-            tree = ET.parse(full_filename)
-        except:
-            print("Failed to parse tree")
-            continue
-
-        root = tree.getroot()
-
-        segments = find_segments(root)
-        full_truth = root.find('{http://www.w3.org/2003/InkML}annotation').text
-
-        images_with_truth = []
-        processed = dict()
-        for segment in segments:
-            image, truth, segment_id = segment.generate_bitmap()
-
-            start_index = 0
-            try:
-                start_index = processed[truth]
-            except:
-                pass
-            try: 
-                truth_index = full_truth.index(truth, start_index)
-            except:
-                continue
-
-            images_with_truth.append((image, truth, truth_index))
-
-            processed[truth] = truth_index + 1
-    
-        sorted_returnvalues = sorted(images_with_truth, key=lambda t: t[2])
-
-        for val in sorted_returnvalues:
-            yield (val[0], val[1])
-
-        count += 1
-
-
-
-
-def model_data_generator(limit=10000):
-    count = 0
-    for file in os.listdir(os.getcwd() + '/data'):
-        if count > limit: break
-        if count%100 == 0: print('Count', count)
-        full_filename = os.getcwd() + '/data/' + file
-        try:
-            tree = ET.parse(full_filename)
-        except:
-            print("Failed to parse tree")
-            continue
-
-        root = tree.getroot()
-
-        segments = find_segments(root)
-
-        equation = Equation(segments)
-
-        equation.compute_global_boundaries()
-
-        count += 1
-
-        
-
-        yield equation.create_image_and_scale()
-
-        # equation.save()
-
-    # generate_bitmaps(segments)
-
-    # generate_bitmap(segments[0])
-
-if __name__ == '__main__':
-    for val in continous_symbol_generator(limit=10):
-        print(val[1])

@@ -13,11 +13,16 @@ import rpd_test
 import random
 import time
 
+
+"""
+    This file includes different methods for preprocessing data before
+    prediction. It also has a method to generate a full dataset of specified symbols.
+"""
 def get_inkml_root(file):
 	return ET.parse(file).getroot()
 
 
-
+# Continously generates images from the InkML files
 def segment_generator(directory):
     count = 0
     for file in os.listdir(directory):
@@ -32,14 +37,15 @@ def segment_generator(directory):
                 for i, segment in enumerate(segments):
                     yield segment
 
-        except GeneratorExit:
+        except GeneratorExit: 
             break
         except Exception as e:
             count += 1
-            print("ERROR IN FILE", count)
-            print("Error", e)
+            print("Error in segment generator", e)
+            print("Current number of exceptions", count)
             continue
 
+# Find the first segment from with a specified truth
 def get_single_segment(truth, num=0):
     curr = 0
     for segment in segment_generator(os.getcwd() + '/data/xml/'):
@@ -48,7 +54,6 @@ def get_single_segment(truth, num=0):
                     return segment.traces
             curr += 1
 
-
 def plot_trace(trace):  # trace is x,y coordinates
 	plt.plot(trace[:, 0], trace[:, 1])
 	axes = plt.gca()
@@ -56,11 +61,8 @@ def plot_trace(trace):  # trace is x,y coordinates
 	
 	plt.show()
 
-def func(x, a, b, c):
-     return a * np.exp(-b * x) + c
-
-
-
+# Scale traces between to within a specified range [-recolution, resolution].
+# Will keep the same proportions as the original trace
 def scale_traces(trace, resolution=1):
 
     trace = np.array(trace)
@@ -106,6 +108,10 @@ def scale_traces(trace, resolution=1):
 
     return trace
 
+# Combines a list of traces to a single numpy array.
+# The end of each trace will be marked as a 1 in index 2 of the first axis.
+# Outputs an array with shape [x_coord, y_coord, end_of_trace(0 | 1)]
+
 def combine_segment(traces):
     combined_segment = []
 
@@ -123,16 +129,17 @@ def combine_segment(traces):
 
     return np.array(combined_segment)
 
+# Runs the fixed RDP algorithm on all traces. Each trace will be reduced to 40 datapoints.
 def run_rdp_on_traces(traces):
     traces_after_rdp = []
 
     for trace in traces:
         traces_after_rdp.append(rpd_test.rdp_fixed_num(trace, fixed_num=40))
-        #traces_after_rdp.append(rdp_fixed_num(trace, ))
 
     return traces_after_rdp
 
 
+# Create a bitmap (image) from the traces
 IMG_RESOLUTION = 26
 def generate_bitmap(traces):
     resolution = IMG_RESOLUTION
@@ -210,10 +217,22 @@ def generate_bitmap(traces):
             draw.line([x_coord, y_coord, next_coord[0], next_coord[1]], fill="white", width=1)
 
     return image
+"""
+    Generates the full dataset. 
 
+    input:
+    numb_symbols - number of symbols to create
+    include - A dict with the truths to include in the dataset. If None, all truths available will be included
+    returnType - Array of types to include. Can be 'TRACE', 'IMAGE' or both.
 
-        
-def generate_dataset(numb_symbols=100, include=None, returnType=['TRACE', 'IMAGE'], num_augumentations=3):
+    
+    returns 
+    padded traces, 
+    images, 
+    truths, 
+    original traces
+"""
+def generate_dataset(numb_symbols=100, include=None, returnType=['TRACE', 'IMAGE']):
     segments = []
     images = []
     truths = []
@@ -265,13 +284,4 @@ def generate_dataset(numb_symbols=100, include=None, returnType=['TRACE', 'IMAGE
 
     return padded, images, truths, original_traces
 
-if __name__ == '__main__':
-    trace = np.array([[2, -1], [2, 0], [2, 1]])
-    plt.plot(trace[:, 0], trace[:, 1])
-    res_trace = scale_traces(trace)
-    plt.figure()
-    plt.plot(res_trace[:, 0], res_trace[:, 1])
 
-    plt.show()
-
-        

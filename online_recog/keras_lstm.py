@@ -15,6 +15,10 @@ from sklearn.utils import shuffle
 plt.style.use('ggplot')
 
 #https://github.com/keras-team/keras/issues/2548
+"""
+    A callback to run validation on more than test and validation data (real data). 
+    Stores the results from all epochs in a log directory.
+"""
 class StorageCallback(Callback):
     def __init__(self, real_dataX, real_dataY, name=""):
         self.real_dataX = real_dataX
@@ -56,9 +60,10 @@ class StorageCallback(Callback):
 
         
 
-
+# The classes to index mapping, used to determine what truth the predicted class maps to.
 CLASS_INDICES = {'3': 7, 'y': 36, 'lt': 26,'\lt': 26, 'gamma': 22, '\\gamma': 22, 'beta': 20, '\\beta': 20, ')': 1, '0': 4, '1': 5, 'sqrt': 33, '\sqrt': 33, 'lambda': 25, '\\lambda': 25, '7': 11, 'z': 37, '6': 10, 'Delta': 15,'\\Delta': 15, '-': 3, 'neq': 28,'\\neq': 28, '=': 14, '8': 12, 'G': 16, 'sigma': 32,'\\sigma': 32, 'f': 21, 'rightarrow': 31,'\\rightarrow': 31, 'phi': 29,'\phi': 29, 'infty': 24,'\infty': 24, 'x': 35, '[': 17, '9': 13, 'gt': 23, '\gt': 23, 'theta': 34,'\\theta': 34, 'pi': 30, '\pi': 30, '4': 8, '5': 9, '2': 6, 'mu': 27, '\mu': 27, '(': 0, ']': 18, 'alpha': 19, '\\alpha': 19, '+': 2}
 
+# Helper function to generate dataset and do the last preprocessing (truth to onehot and image to channel_last and divided by 255)
 def generate_train_data(limit=10000):
     prediction_data = []
     pred_images = []
@@ -88,6 +93,7 @@ def generate_train_data(limit=10000):
     
     return [np.array(prediction_data), np.array(pred_images)], np.array(truth_data), np.array(original_traces)
 
+# Helper method for testing a model
 def predict_classes(imgs):
     MODEL_PATH = os.getcwd() + '/my_model.h5'
     #CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
@@ -99,8 +105,8 @@ def predict_classes(imgs):
 
 
 
-# Original LSTM model
-def create_LSTM_model(with_last_layer=False):
+# The resulting RNN model after experimentation
+def create_RNN_model(with_last_layer=False):
     model = Sequential()
     model.add(Conv1D(48, 5, activation="relu", padding="valid", input_shape=(40, 3)))
     model.add(MaxPooling1D())
@@ -126,7 +132,7 @@ def create_LSTM_model(with_last_layer=False):
    #model.compile(loss=keras.losses.categorical_crossentropy, optimizer='adam', metrics=['accuracy'])
 
 
-# Example CNN model
+# The resulting CNN model after experimentation
 def create_CNN_model(with_last_layer=False):
     model = Sequential()
     model.add(Conv2D(32, (3, 3), input_shape=(26,26,1), activation='relu'))
@@ -144,24 +150,26 @@ def create_CNN_model(with_last_layer=False):
         model.add(Dense(38, activation="softmax"))
     return model
 
-#Compined CNN and LSTM
+#The resuling combined model from both a CNN and RNN
 def create_combined_model():
-    LSTM_model = create_LSTM_model()
+    RNN_model = create_RNN_model()
     CNN_model = create_CNN_model()
 
-    concatenated = Concatenate()([LSTM_model.output, CNN_model.output])
+    concatenated = Concatenate()([RNN_model.output, CNN_model.output])
     model = (Dense(128, activation="relu"))(concatenated)
     model = (Dropout(0.3))(model)
     model = (Dense(38, activation = 'softmax'))(model)
 
-    return keras.models.Model([LSTM_model.input, CNN_model.input], model)
+    return keras.models.Model([RNN_model.input, CNN_model.input], model)
 
+# Combile the model with adam opimizer and categorical crossentropy
 def compile_model(model):
 
     model.compile(loss=keras.losses.categorical_crossentropy,
                 optimizer="adam",
                 metrics=['accuracy'])
 
+# Do training
 def run_model(trainX, trainY, realX, realY, model, name="", num_epochs=20):
 
     history = model.fit(trainX, trainY, epochs=num_epochs, verbose=1, shuffle=True, validation_split=0.1, 
@@ -170,12 +178,14 @@ def run_model(trainX, trainY, realX, realY, model, name="", num_epochs=20):
 
     return history
 
+# Helper function to find a truth from a prediction
 def find_truth(prediction):
     pred_index = np.argmax(prediction)
     for key, val in CLASS_INDICES.items():
         if val == pred_index:
             return key
 
+# Run the different models
 def run_combined_model(trainX, trainY, realX, realY):
 
     m = create_combined_model()
@@ -185,7 +195,7 @@ def run_combined_model(trainX, trainY, realX, realY):
 
 def run_RNN_model(trainX, trainY, realX, realY):
 
-    m = create_LSTM_model(with_last_layer=True)
+    m = create_RNN_model(with_last_layer=True)
     compile_model(m)
 
     run_model(trainX[0], trainY, realX[0], realY, m, "RNN_model")
@@ -198,26 +208,19 @@ def run_CNN_model(trainX, trainY, realX, realY):
     run_model(trainX[1], trainY, realX[1], realY, m, "CNN_model")
     m.save('CNN_model.h5')
 
-#trainX, trainY, original_traces = generate_train_data(50000)
 
-#np.save('./data/trainX_trace', trainX[0])
-#np.save('./data/trainX_img', trainX[1])
-#np.save('./data/trainY', trainY)
-#np.save('./data/original_traces', original_traces)
+# Generate a new dataset
+def generate_and_save_dataset():
 
-"""
-traces = np.array(get_single_segment('\\beta', num=3))
+    trainX, trainY, original_traces = generate_train_data(50000)
 
-
-for t in traces:
-    plt.plot(t[:, 0], t[:, 1], '-o')
-
-plt.gca().invert_yaxis()
-plt.axis('equal')
-plt.savefig('../visualization/images/beta_raw.png')
-"""
+    np.save('./data/trainX_trace', trainX[0])
+    np.save('./data/trainX_img', trainX[1])
+    np.save('./data/trainY', trainY)
+    np.save('./data/original_traces', original_traces)
 
 
+# Load data and train model
 trainX_trace = np.load('./data/trainX_trace.npy')
 trainX_img = np.load('./data/trainX_img.npy')
 trainY = np.load('./data/trainY.npy')
@@ -225,34 +228,13 @@ trainY = np.load('./data/trainY.npy')
 realX = [np.load('./data/real_test_data/trainX_trace.npy'), np.load('./data/real_test_data/trainX_img.npy')]
 realY = np.load('./data/real_test_data/trainY.npy')
 
-
+# Real data needs a bit of preprocessing.
 realX[0] = realX[0].reshape(len(realX[0]), 40, 3)
 realX[1] = realX[1].reshape(len(realX[0]), 26, 26, 1)
 
+# Shuffle data (gave same results, therefore commented out)
 #trainX_trace, trainX_img, trainY = shuffle(trainX_trace, trainX_img, trainY, random_state=0)
 
-#print("Image example", image_example)
-#print("sequence example", sequence_example)
 
-
+# Run the specified model
 run_RNN_model([trainX_trace, trainX_img], trainY, realX, realY)
-print(history.history.keys())
-# summarize history for accuracy
-plt.plot(history.history['acc'])
-plt.plot(history.history['val_acc'])
-plt.title('model accuracy')
-plt.ylabel('accuracy')
-plt.xlabel('epoch')
-plt.legend(['train', 'test'], loc='upper left')
-plt.show()
-
-
-lstm_mod = keras.models.load_model(os.getcwd() + '/lstm_model.h5')
-trainX, trainY = generate_train_data(100)
-predictions = lstm_mod.predict_proba(trainX)
-actual_truth = [find_truth(pred) for pred in trainY]
-cnn_truths = [find_truth(pred) for pred in predictions]
-
-print("Actual truth", actual_truth)
-print("CNN truths", cnn_truths)
-
