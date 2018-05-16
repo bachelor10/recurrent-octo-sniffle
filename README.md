@@ -5,7 +5,13 @@ The repository also includes methods for processing InkML files into normalized 
 
 ## Creating dataset and running the project
 
+### Prerequesites
+- Python 3.5
+- Pip (To python 3.5)
+
 In order to run the code in this repository, you will need either InkML files or an already generated dataset.
+
+First clone the repository and run ```pip install -r requirements.txt ```.
 
 ### From InkML files
 
@@ -28,12 +34,15 @@ If you have downloaded the preprocessed data. You will just have to put the data
 
 ### Running the training
 
-After placing the datasets into the correct folder, the models can be ran by uncommenting ```load_dataset_and_run_model()``` in /online_recog/keras_lstm_py. Choose the model you wish to train by changing ```run_RNN_model()``` to the method with the model you wish to train. Then run ```python keras_lstm.py```
+After placing the datasets into the correct folder, the models can be ran by doing the following.
 
-### Prerequesites
-- Python 3.5
-- Pip (To python 3.5)
-- Web Browser
+1. Uncomment```load_dataset_and_run_model()``` in ```/online_recog/keras_lstm_py```. 
+2. Choose the model you wish to train by changing ```run_RNN_model()``` to the method with the model you wish to train. 
+3. Run ```python keras_lstm.py```.
+
+### Including the real data.
+
+In order to include real data for validation during training. You will either need to create data from symbol-predictor-server, or download the already processed files (the real data is included).
 
 
 ### Python packages
