@@ -44,6 +44,8 @@ After placing the datasets into the correct folder, the models can be ran by doi
 
 In order to include real data for validation during training. You will either need to create data from symbol-predictor-server, or download the already processed files (the real data is included).
 
+In ```/online_recog/keras_lstm.py```, there is a callback class which can be used to run validation and store logs from the training. This class, as well as a couple other places in ```keras_lstm.py``` has commented out lines that can be uncommented if real data is available in ```/online_recog/data```. The regarding lines is shown in the ```keras_lstm.py```.
+
 
 ### Python packages
 - [Requirements](requirements.txt)
