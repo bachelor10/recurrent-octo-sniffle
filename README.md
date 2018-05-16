@@ -9,7 +9,7 @@ The repository also includes methods for processing InkML files into normalized 
 - Python 3.5
 - Pip (To python 3.5)
 
-In order to run the code in this repository, you will need either InkML files or an already generated dataset.
+In order to run the code in this repository, you will need either InkML files or an already generated dataset. There is also a complete folder with both xml and preprocessed data available. If this file is chosen, just extract all the files within the ```/online_recog/data``` folder.
 
 First clone the repository and run ```pip install -r requirements.txt ```.
 
@@ -17,7 +17,7 @@ First clone the repository and run ```pip install -r requirements.txt ```.
 
 If you do not have access to the preprocessed dataset. You must first run the preprocessing on InkML files.
 
-1. Download the files from []()
+1. Download the files from [datasets](https://github.com/bachelor10/recurrent-octo-sniffle/tree/master/datasets)
 2. Create folders such that the folder structure in online_recog is:
 ```/online_recog/data/xml/```
 3. Unzip the InkML files downloaded, and paste them into the xml folder.
@@ -28,7 +28,7 @@ If you do not have access to the preprocessed dataset. You must first run the pr
 ### From already preprocessed
 If you have downloaded the preprocessed data. You will just have to put the data in the correct folder.
 
-1. Download the files from []()
+1. Download the files from [datasets](https://github.com/bachelor10/recurrent-octo-sniffle/tree/master/datasets)
 2. Create the folder ```/online_recog/data```.
 3. Extract the zipped files into the newly created ```/data``` folder.
 
