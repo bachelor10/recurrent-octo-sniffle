@@ -20,12 +20,13 @@ plt.style.use('ggplot')
     Stores the results from all epochs in a log directory.
 """
 class StorageCallback(Callback):
-    def __init__(self, real_dataX, real_dataY, name=""):
-        self.real_dataX = real_dataX
-        self.real_dataY = real_dataY
+    #Uncomment lines if you are running with real dataset aswell
+    def __init__(self, real_dataX=None, real_dataY=None, name=""):
+        #self.real_dataX = real_dataX
+        #self.real_dataY = real_dataY
 
-        self.real_data_loss = []
-        self.real_data_acc = []
+        #self.real_data_loss = []
+        #self.real_data_acc = []
 
         self.validation_data_loss = []
         self.validation_data_acc = []
@@ -36,12 +37,12 @@ class StorageCallback(Callback):
         self.filename = name
 
     def on_epoch_end(self, epoch, logs={}):
-        x, y = self.real_dataX, self.real_dataY
-        loss, acc = self.model.evaluate(x, y, verbose=0)
-        print('\nTesting loss: {}, acc: {}\n'.format(loss, acc))
+        #x, y = self.real_dataX, self.real_dataY
+        #loss, acc = self.model.evaluate(x, y, verbose=0)
+        #print('\nTesting loss: {}, acc: {}\n'.format(loss, acc))
 
-        self.real_data_loss.append(loss)
-        self.real_data_acc.append(acc)
+        #self.real_data_loss.append(loss)
+        #self.real_data_acc.append(acc)
 
         self.validation_data_loss.append(logs['val_loss'])
         self.validation_data_acc.append(logs['val_acc'])
@@ -50,8 +51,8 @@ class StorageCallback(Callback):
         self.train_data_acc.append(logs['acc'])
 
 
-        np.save('./logs/' + self.filename + "_real_data_loss", np.array(self.real_data_loss))
-        np.save('./logs/' + self.filename + "_real_data_acc", np.array(self.real_data_acc))
+        #p.save('./logs/' + self.filename + "_real_data_loss", np.array(self.real_data_loss))
+        #np.save('./logs/' + self.filename + "_real_data_acc", np.array(self.real_data_acc))
         np.save('./logs/' + self.filename + "_validation_data_loss", np.array(self.validation_data_loss))
         np.save('./logs/' + self.filename + "_validation_data_acc", np.array(self.validation_data_acc))
         np.save('./logs/' + self.filename + "_train_data_loss", np.array(self.train_data_loss))
@@ -95,9 +96,7 @@ def generate_train_data(limit=10000):
 
 # Helper method for testing a model
 def predict_classes(imgs):
-    MODEL_PATH = os.getcwd() + '/my_model.h5'
-    #CLASSES = ["+", "-", "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "="]#os.listdir(os.getcwd() + '/machine_learning' + '/train')    
-    #MODEL_PATH = os.getcwd() + '/my_model.h5'
+    MODEL_PATH = os.getcwd() + '/my_model.h5' #Set the name of your model
 
     model = keras.models.load_model(MODEL_PATH)
 
@@ -129,8 +128,6 @@ def create_RNN_model(with_last_layer=False):
     
     return model
 
-   #model.compile(loss=keras.losses.categorical_crossentropy, optimizer='adam', metrics=['accuracy'])
-
 
 # The resulting CNN model after experimentation
 def create_CNN_model(with_last_layer=False):
@@ -150,7 +147,7 @@ def create_CNN_model(with_last_layer=False):
         model.add(Dense(38, activation="softmax"))
     return model
 
-#The resuling combined model from both a CNN and RNN
+#The resulting combined model from both a CNN and RNN
 def create_combined_model():
     RNN_model = create_RNN_model()
     CNN_model = create_CNN_model()
@@ -171,9 +168,13 @@ def compile_model(model):
 
 # Do training
 def run_model(trainX, trainY, realX, realY, model, name="", num_epochs=20):
+    
+    callbacks = []
+    if realX and realY:
+        callbacks.append(StorageCallback(realX, realY, name)) # Only use callback if you have access to real data
 
     history = model.fit(trainX, trainY, epochs=num_epochs, verbose=1, shuffle=True, validation_split=0.1, 
-        callbacks=[StorageCallback(realX, realY, name)])
+        callbacks=callbacks)
 
 
     return history
@@ -219,22 +220,33 @@ def generate_and_save_dataset():
     np.save('./data/trainY', trainY)
     np.save('./data/original_traces', original_traces)
 
+def load_dataset_and_run_model():
+    # Load data and train model
+    trainX_trace = np.load('./data/trainX_trace.npy')
+    trainX_img = np.load('./data/trainX_img.npy')
+    trainY = np.load('./data/trainY.npy')
+    
+    #Remove if you have access to real data
+    realY = [None]
+    realX = [None, None]
+    
+    #Uncomment if you have access to real data
+    #realX = [np.load('./data/real_test_data/trainX_trace.npy'), np.load('./data/real_test_data/trainX_img.npy')]
+    #realY = np.load('./data/real_test_data/trainY.npy')
 
-# Load data and train model
-trainX_trace = np.load('./data/trainX_trace.npy')
-trainX_img = np.load('./data/trainX_img.npy')
-trainY = np.load('./data/trainY.npy')
+    # Real data needs a bit of preprocessing.
+    #realX[0] = realX[0].reshape(len(realX[0]), 40, 3)
+    #realX[1] = realX[1].reshape(len(realX[0]), 26, 26, 1)
 
-realX = [np.load('./data/real_test_data/trainX_trace.npy'), np.load('./data/real_test_data/trainX_img.npy')]
-realY = np.load('./data/real_test_data/trainY.npy')
+    # Shuffle data (gave same results, therefore commented out)
+    #trainX_trace, trainX_img, trainY = shuffle(trainX_trace, trainX_img, trainY, random_state=0)
 
-# Real data needs a bit of preprocessing.
-realX[0] = realX[0].reshape(len(realX[0]), 40, 3)
-realX[1] = realX[1].reshape(len(realX[0]), 26, 26, 1)
+    # Run the specified model
+    run_RNN_model([trainX_trace, trainX_img], trainY, realX, realY)
+   
+#Uncomment to create a new dataset from InkML
+#generate_and_save_dataset()
 
-# Shuffle data (gave same results, therefore commented out)
-#trainX_trace, trainX_img, trainY = shuffle(trainX_trace, trainX_img, trainY, random_state=0)
+#Uncomment to run training on either self generated or downloaded training data.
+#load_dataset_and_run_model()
 
-
-# Run the specified model
-run_RNN_model([trainX_trace, trainX_img], trainY, realX, realY)
