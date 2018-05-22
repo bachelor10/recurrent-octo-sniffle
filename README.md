@@ -17,7 +17,7 @@ First clone the repository and run ```pip install -r requirements.txt ```.
 
 If you do not have access to the preprocessed dataset. You must first run the preprocessing on InkML files.
 
-1. Download the files from [datasets](https://github.com/bachelor10/recurrent-octo-sniffle/tree/master/datasets)
+1. Download the [InkML folder](https://www.dropbox.com/sh/2v1fo8inmwb4h3l/AAAaqZ5HPyS4hNoGEpnMi3FPa?dl=0)
 2. Create folders such that the folder structure in online_recog is:
 ```/online_recog/data/xml/```
 3. Unzip the InkML files downloaded, and paste them into the xml folder.
@@ -28,7 +28,7 @@ If you do not have access to the preprocessed dataset. You must first run the pr
 ### From already preprocessed
 If you have downloaded the preprocessed data. You will just have to put the data in the correct folder.
 
-1. Download the files from [datasets](https://github.com/bachelor10/recurrent-octo-sniffle/tree/master/datasets)
+1. Download the folder [data.zip](https://www.dropbox.com/sh/2v1fo8inmwb4h3l/AAAaqZ5HPyS4hNoGEpnMi3FPa?dl=0)
 2. Create the folder ```/online_recog/data```.
 3. Extract the zipped files into the newly created ```/data``` folder.
 
